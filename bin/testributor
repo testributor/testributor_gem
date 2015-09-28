@@ -1,0 +1,5 @@
+#!/usr/bin/env ruby
+
+require 'testributor'
+
+Testributor.new(ENV['APP_ID'],ENV['APP_SECRET']).run
