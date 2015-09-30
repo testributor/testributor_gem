@@ -9,6 +9,10 @@ class Testributor::Client
     @token = client.client_credentials.get_token
   end
 
+  def get_current_project
+    token.request(:get, 'projects/current').parsed
+  end
+
   # Asks the testributor API for a file to run
   def fetch_file_to_run
     token.request(:patch, 'test_job_files/bind_next_pending').parsed

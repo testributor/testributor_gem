@@ -1,15 +1,16 @@
 # This is a wrapper class around the test_job_file response from testributor
 class TestJobFile
-  attr_reader :api_client, :commit_sha, :file_name
+  attr_reader :repo, :commit_sha, :file_name, :build_commands
 
-  def initialize(file_response, api_client)
+  def initialize(file_response, repo, build_commands='')
     @commit_sha = file_response["test_job"]["commit_sha"]
     @file_name = file_response["file_name"]
-    @api_client = api_client
+    @repo = repo
+    @build_commands = build_commands
   end
 
   def run
-    unless commit_sha == current_commit_sha
+    if commit_changed?
       checkout_to_job_commit
       setup_test_environment
     end
@@ -18,34 +19,43 @@ class TestJobFile
     # structured
     #`bin/rake test #{file_name}`
     log "Running test file #{file_name}"
+    log `bin/rake test #{file_name}`
 
     report_results
+  end
+
+  # Yields the given block is test_job commit is different from the current one
+  def commit_changed?
+    # Use only the first 6 characters from each SHA1 to compare
+    current_commit_sha[0..5] != commit_sha[0..5]
   end
 
   private
 
   def current_commit_sha
-    # TODO:
-    `git rev-parse HEAD`
+    Dir.chdir(Testributor::PROJECT_DIR) do
+      `git rev-parse HEAD`.strip
+    end
   end
 
+  # TODO: Handle the following case gracefully:
+  # Testributor#run has already fetched the repo if the commit is not known.
+  # Still, there might be a case that the commit cannot be found even after
+  # pulling the repo. E.g. The history was rewritten somehow (do the commits
+  # get lost then?) or the repo has been reset (deleted and repushed). This is
+  # an edge case but our worker should probably inform katana about this (so
+  # katana can notify the users).
   def checkout_to_job_commit
     log "Checking out #{commit_sha}"
-    # TODO: fetch and checkout to commit
-    # token = api_client.get_github_api_key
-    # puts `mkdir #{repo_name}`
-    # Dir.chdir repo_name
-    # puts `pwd`
-    # puts `git init`
-    # puts `git pull https://#{token}@github.com/#{owner}/#{repo_name}.git`
+    repo.checkout(commit_sha)
   end
 
   # Create test database, install needed gems and run any custom build scripts
   def setup_test_environment
     log "Setting up environment"
-    # TODO
-    # puts `bundle install`
-    # puts `RAILS_ENV=test bin/rake db:setup`
+    Dir.chdir(Testributor::PROJECT_DIR) do
+      log `#{build_commands}` if build_commands && build_commands != ''
+    end
   end
 
   def report_results

@@ -1,28 +1,28 @@
 require 'test_helper'
 
 class TestributorTest < MiniTest::Test
-  describe "#project_dir_exists?" do
-    subject { Testributor.new('api_key', 'api_secret') }
+  describe ".initialize" do
+    subject do
+      Testributor.stub_any_instance(:create_project_repo, true) do
+        Testributor.new('app_id', 'app_secret')
+      end
+    end
+
+    let(:client_mock) { MiniTest::Mock.new }
 
     before do
+      client_mock.expect(:get_current_project, {
+        "repository_owner" => "testributor_rich_client",
+        "repository_name" => "stupid_startup",
+        "github_access_token" => "12345" })
+      Testributor::Client.stubs(:new).returns(client_mock)
     end
 
-    after do
-      FileUtils.rm_rf(Testributor::PROJECT_DIR)
-    end
-
-    it "returns true when directory exists" do
-      Dir.mkdir(Testributor::PROJECT_DIR) unless File.exists?(Testributor::PROJECT_DIR)
-
-      Testributor::Client.stub :new, true do
-        subject.send(:project_dir_exists?).must_equal true
-      end
-    end
-
-    it "returns false when directory does not exist" do
-      Testributor::Client.stub :new, true do
-        subject.send(:project_dir_exists?).must_equal false
-      end
+    it "assigns instance variables for current project" do
+      subject.repo_owner.must_equal 'testributor_rich_client'
+      subject.repo_name.must_equal 'stupid_startup'
+      subject.github_access_token.must_equal '12345'
+      subject.repo.is_a?(Rugged::Repository).must_equal true
     end
   end
 end
