@@ -3,6 +3,7 @@ class Testributor
   # (project developers might be sleeping, no need to keep polling too often)
   POLLING_TIMEOUT = 3
   API_URL = ENV["API_URL"] || "http://www.testributor.com/api/v1/"
+  PROJECT_DIR = ENV["HOME"] + '/testributor'
 
   attr_reader :api_client # The testributor API client
 
@@ -39,8 +40,7 @@ class Testributor
   end
 
   def project_dir_exists?
-    # TODO
-    false
+    File.directory?(PROJECT_DIR)
   end
 
   def fetch_project_repo
