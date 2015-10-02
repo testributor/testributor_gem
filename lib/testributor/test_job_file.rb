@@ -1,13 +1,15 @@
 # This is a wrapper class around the test_job_file response from testributor
 module Testributor
   class TestJobFile
-    attr_reader :repo, :commit_sha, :file_name, :build_commands
+    attr_reader :id, :commit_sha, :file_name, :repo, :build_commands, :api_client
 
-    def initialize(file_response, repo, build_commands='')
+    def initialize(file_response, repo, api_client, build_commands='')
+      @id = file_response["id"]
       @commit_sha = file_response["test_job"]["commit_sha"]
       @file_name = file_response["file_name"]
       @repo = repo
       @build_commands = build_commands
+      @api_client = api_client
     end
 
     def run
@@ -24,9 +26,9 @@ module Testributor
           file_name, "require 'testributor/reporter'\n" + File.read(file_name))
       end
       log "Running test file #{file_name}"
-      log `bin/rake test #{file_name}`
+      results = JSON.parse(`bin/rake test #{file_name}`)
 
-      report_results
+      report_results(results)
     end
 
     # Use only the first 6 characters from each SHA1 to compare
@@ -49,6 +51,9 @@ module Testributor
     # get lost then?) or the repo has been reset (deleted and repushed). This is
     # an edge case but our worker should probably inform katana about this (so
     # katana can notify the users).
+    # TODO: Might not let us checkout if there are changes pending (like the
+    # lines we inject in various files). Maybe we need to reset --hard to master
+    # first or something.
     def checkout_to_job_commit
       log "Checking out #{commit_sha}"
       repo.checkout(commit_sha)
@@ -67,9 +72,10 @@ module Testributor
       end
     end
 
-    def report_results
+    def report_results(results)
       log "Reporting to testributor"
-      # TODO
+      params = { test_job_file: results }
+      api_client.update_test_job_file(id, params)
     end
 
     def log(message)

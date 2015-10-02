@@ -18,5 +18,9 @@ module Testributor
     def fetch_file_to_run
       token.request(:patch, 'test_job_files/bind_next_pending').parsed
     end
+
+    def update_test_job_file(id, params)
+      token.request(:patch, "test_job_files/#{id}", params: params).parsed
+    end
   end
 end

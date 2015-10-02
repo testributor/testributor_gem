@@ -22,7 +22,7 @@ module Testributor
     def run
       while true
         if (file_response = api_client.fetch_file_to_run)
-          test_job_file = TestJobFile.new(file_response, @repo, @build_commands)
+          test_job_file = TestJobFile.new(file_response, @repo, api_client, @build_commands)
           fetch_project_repo if !@repo.exists?(test_job_file.commit_sha)
           Dir.chdir(PROJECT_DIR) do
             test_job_file.run
