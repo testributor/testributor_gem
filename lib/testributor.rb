@@ -1,60 +1,15 @@
-class Testributor
-  # TODO: TBD we might want to sleep longer after many tries with nothing to run
-  # (project developers might be sleeping, no need to keep polling too often)
-  POLLING_TIMEOUT = 3
-  API_URL = ENV["API_URL"] || "http://www.testributor.com/api/v1/"
-  PROJECT_DIR = ENV["HOME"] + '/testributor'
-
-  attr_reader :api_client, :repo_owner, :repo_name, :github_access_token, :repo
-
-  def initialize(app_id, app_secret)
-    @api_client = Client.new(app_id, app_secret)
-    current_project_response = @api_client.get_current_project
-    # TODO: Consider creating a new model for current_project
-    @repo_owner = current_project_response["repository_owner"]
-    @repo_name = current_project_response["repository_name"]
-    @github_access_token = current_project_response["github_access_token"]
-    @build_commands = current_project_response["build_commands"]
-    create_project_repo
-    @repo = Rugged::Repository.new(PROJECT_DIR)
-  end
-
-  def run
-    while true
-      if (file_response = api_client.fetch_file_to_run)
-        test_job_file = TestJobFile.new(file_response, @repo, @build_commands)
-        fetch_project_repo if !@repo.exists?(test_job_file.commit_sha)
-        Dir.chdir(PROJECT_DIR) do
-          test_job_file.run
-        end
-      else
-        sleep POLLING_TIMEOUT
-      end
-    end
-  end
-
-  private
+module Testributor
+  # Use the SSL certificate provided by heroku for now
+  API_URL = ENV["API_URL"] || "https://testributor.herokuapp.com/api/v1/"
 
   # We might want to implement a different logging mechanism.
   # For now, it's just "puts".
   def self.log(message)
     puts message
   end
-
-  def create_project_repo
-    Dir.mkdir(PROJECT_DIR) unless File.exists?(PROJECT_DIR)
-    fetch_project_repo
-  end
-
-  def fetch_project_repo
-    puts "Fetching repo"
-    Dir.chdir(PROJECT_DIR) do
-      `git init`
-      `git pull https://#{github_access_token}@github.com/#{repo_owner}/#{repo_name}.git`
-    end
-  end
 end
 
+require 'testributor/worker'
 require 'testributor/client'
 require 'testributor/test_job_file'
 require 'rugged'
