@@ -5,7 +5,8 @@ module Testributor
     POLLING_TIMEOUT = 3
     PROJECT_DIR = ENV["HOME"] + '/.testributor'
 
-    attr_reader :api_client, :repo_owner, :repo_name, :github_access_token, :repo
+    attr_reader :api_client, :repo_owner, :repo_name, :github_access_token, :repo,
+      :build_commands
 
     def initialize(app_id, app_secret)
       @api_client = Client.new(app_id, app_secret)
@@ -22,7 +23,7 @@ module Testributor
     def run
       while true
         if (file_response = api_client.fetch_file_to_run)
-          test_job_file = TestJobFile.new(file_response, @repo, api_client, @build_commands)
+          test_job_file = TestJobFile.new(file_response, self)
           fetch_project_repo if !@repo.exists?(test_job_file.commit_sha)
           Dir.chdir(PROJECT_DIR) do
             test_job_file.run
@@ -45,6 +46,23 @@ module Testributor
       Dir.chdir(PROJECT_DIR) do
         log `git init`
         log `git pull https://#{github_access_token}@github.com/#{repo_owner}/#{repo_name}.git`
+
+        # Setup the environment because TestJobFile#run will not setup the
+        # project if the commit is the current commit.
+        setup_test_environment
+      end
+    end
+
+    # Create test database, install needed gems and run any custom build scripts
+    def setup_test_environment
+      log "Setting up environment"
+      Dir.chdir(Testributor::Worker::PROJECT_DIR) do
+        # Inject our gem in the Gemfile
+        # What if there is not Gemfile? (could it be?)
+        `echo 'gem "testributor", group: :test' >> Gemfile`
+
+        log "Running build commands"
+        log `#{build_commands}` if build_commands && build_commands != ''
       end
     end
 
