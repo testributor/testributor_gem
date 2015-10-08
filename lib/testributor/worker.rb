@@ -44,8 +44,8 @@ module Testributor
     def fetch_project_repo
       log "Fetching repo"
       Dir.chdir(PROJECT_DIR) do
-        log `git init`
-        log `git pull https://#{github_access_token}@github.com/#{repo_owner}/#{repo_name}.git`
+        Testributor.command("git init")
+        Testributor.command("git pull https://#{github_access_token}@github.com/#{repo_owner}/#{repo_name}.git")
 
         # Setup the environment because TestJobFile#run will not setup the
         # project if the commit is the current commit.
@@ -59,10 +59,10 @@ module Testributor
       Dir.chdir(Testributor::Worker::PROJECT_DIR) do
         # Inject our gem in the Gemfile
         # What if there is not Gemfile? (could it be?)
-        `echo 'gem "testributor", group: :test' >> Gemfile`
+        Testributor.command(%q{echo 'gem "testributor", group: :test' >> Gemfile})
 
         log "Running build commands"
-        log `#{build_commands}` if build_commands && build_commands != ''
+        Testributor.command("#{build_commands}") if build_commands && build_commands != ''
       end
     end
 

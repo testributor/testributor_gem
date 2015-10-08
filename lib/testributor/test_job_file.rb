@@ -26,7 +26,7 @@ module Testributor
           file_name, "require 'testributor/reporter'\n" + File.read(file_name))
       end
       log "Running test file #{file_name}"
-      results = JSON.parse(`bin/rake test #{file_name}`)
+      results = JSON.parse(Testributor.command("bin/rake test #{file_name}"))
 
       report_results(results)
     end
@@ -40,7 +40,7 @@ module Testributor
 
     def current_commit_sha
       Dir.chdir(Testributor::Worker::PROJECT_DIR) do
-        `git rev-parse HEAD`.strip
+        Testributor.command("git rev-parse HEAD", false).strip
       end
     end
 
