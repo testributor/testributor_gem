@@ -1,3 +1,5 @@
+require 'fileutils'
+
 module Testributor
   class Worker
     # TODO: TBD we might want to sleep longer after many tries with nothing to run
@@ -6,7 +8,7 @@ module Testributor
     PROJECT_DIR = ENV["HOME"] + '/.testributor'
 
     attr_reader :api_client, :repo_owner, :repo_name, :github_access_token, :repo,
-      :build_commands
+      :build_commands, :overridden_files
 
     def initialize(app_id, app_secret)
       @api_client = Client.new(app_id, app_secret)
@@ -16,6 +18,7 @@ module Testributor
       @repo_name = current_project_response["repository_name"]
       @github_access_token = current_project_response["github_access_token"]
       @build_commands = current_project_response["build_commands"]
+      @overridden_files = current_project_response["files"]
       create_project_repo
       @repo = Rugged::Repository.new(PROJECT_DIR)
     end
@@ -60,6 +63,15 @@ module Testributor
         # Inject our gem in the Gemfile
         # What if there is not Gemfile? (could it be?)
         Testributor.command(%q{echo 'gem "testributor", group: :test' >> Gemfile})
+
+        overridden_files.each do |file|
+          log "Creating #{file["path"]}"
+          dirname = File.dirname(file["path"])
+          unless File.directory?(dirname)
+            FileUtils.mkdir_p(dirname)
+          end
+          File.write(file["path"], file["contents"])
+        end
 
         log "Running build commands"
         Testributor.command("#{build_commands}") if build_commands && build_commands != ''
