@@ -25,34 +25,15 @@ module Testributor
 
     def run
       while true
-        if (file_response = api_client.fetch_file_to_run)
-          test_job_file = TestJobFile.new(file_response, self)
-          fetch_project_repo if !@repo.exists?(test_job_file.commit_sha)
+        if (job_response = api_client.fetch_job_to_run)
+          test_job = TestJob.new(job_response, self)
+          fetch_project_repo if !@repo.exists?(test_job.commit_sha)
           Dir.chdir(PROJECT_DIR) do
-            test_job_file.run
+            test_job.run
           end
         else
           sleep POLLING_TIMEOUT
         end
-      end
-    end
-
-    private
-
-    def create_project_repo
-      Dir.mkdir(PROJECT_DIR) unless File.exists?(PROJECT_DIR)
-      fetch_project_repo
-    end
-
-    def fetch_project_repo
-      log "Fetching repo"
-      Dir.chdir(PROJECT_DIR) do
-        Testributor.command("git init")
-        Testributor.command("git pull https://#{github_access_token}@github.com/#{repo_owner}/#{repo_name}.git")
-
-        # Setup the environment because TestJobFile#run will not setup the
-        # project if the commit is the current commit.
-        setup_test_environment
       end
     end
 
@@ -75,6 +56,25 @@ module Testributor
 
         log "Running build commands"
         Testributor.command("#{build_commands}") if build_commands && build_commands != ''
+      end
+    end
+
+    private
+
+    def create_project_repo
+      Dir.mkdir(PROJECT_DIR) unless File.exists?(PROJECT_DIR)
+      fetch_project_repo
+    end
+
+    def fetch_project_repo
+      log "Fetching repo"
+      Dir.chdir(PROJECT_DIR) do
+        Testributor.command("git init")
+        Testributor.command("git pull https://#{github_access_token}@github.com/#{repo_owner}/#{repo_name}.git")
+
+        # Setup the environment because TestJob#run will not setup the
+        # project if the commit is the current commit.
+        setup_test_environment
       end
     end
 

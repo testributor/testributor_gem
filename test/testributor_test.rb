@@ -3,8 +3,8 @@ require 'test_helper'
 class TestributorTest < MiniTest::Test
   describe ".initialize" do
     subject do
-      Testributor.stub_any_instance(:create_project_repo, true) do
-        Testributor.new('app_id', 'app_secret')
+      Testributor::Worker.stub_any_instance(:create_project_repo, true) do
+        Testributor::Worker.new('app_id', 'app_secret')
       end
     end
 

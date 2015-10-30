@@ -24,6 +24,6 @@ end
 
 require 'testributor/worker'
 require 'testributor/client'
-require 'testributor/test_job_file'
+require 'testributor/test_job'
 require 'rugged'
 require 'open3'

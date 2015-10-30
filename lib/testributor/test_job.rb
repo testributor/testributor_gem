@@ -1,12 +1,12 @@
-# This is a wrapper class around the test_job_file response from testributor
+# This is a wrapper class around the test_job response from testributor
 module Testributor
-  class TestJobFile
+  class TestJob
     attr_reader :id, :commit_sha, :file_name, :repo, :api_client, :worker
 
-    def initialize(file_response, worker)
-      @id = file_response["id"]
-      @commit_sha = file_response["test_job"]["commit_sha"]
-      @file_name = file_response["file_name"]
+    def initialize(job_response, worker)
+      @id = job_response["id"]
+      @commit_sha = job_response["test_run"]["commit_sha"]
+      @file_name = job_response["file_name"]
       @worker = worker
       @repo = worker.repo
       @api_client = worker.api_client
@@ -61,8 +61,8 @@ module Testributor
 
     def report_results(results)
       log "Reporting to testributor"
-      params = { test_job_file: results }
-      api_client.update_test_job_file(id, params)
+      params = { test_job: results }
+      api_client.update_test_job(id, params)
     end
 
     def log(message)
