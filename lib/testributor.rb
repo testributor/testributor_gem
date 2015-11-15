@@ -18,6 +18,10 @@ module Testributor
       log_output && log(s)
     end
 
+    stderr.each do |s|
+      log_output && log(s)
+    end
+
     final_output
   end
 end

@@ -1,12 +1,12 @@
 # This is a wrapper class around the test_job response from testributor
 module Testributor
   class TestJob
-    attr_reader :id, :commit_sha, :file_name, :repo, :api_client, :worker
+    attr_reader :id, :commit_sha, :command, :repo, :api_client, :worker
 
     def initialize(job_response, worker)
       @id = job_response["id"]
       @commit_sha = job_response["test_run"]["commit_sha"]
-      @file_name = job_response["file_name"]
+      @command = job_response["command"]
       @worker = worker
       @repo = worker.repo
       @api_client = worker.api_client
@@ -20,15 +20,26 @@ module Testributor
 
       # Unless already required the reporter on this file
       # inject our own reporter by requiring on the top of the file to run
-      unless File.open(file_name, &:gets) =~ /testributor\/reporter/
-        log "Injecting our reporter"
-        File.write(
-          file_name, "require 'testributor/reporter'\n" + File.read(file_name))
+      # unless File.open(command, &:gets) =~ /testributor\/reporter/
+      #   log "Injecting our reporter"
+      #   File.write(
+      #     command, "require 'testributor/reporter'\n" + File.read(command))
+      # end
+      unless File.read('test/test_helper.rb').split("\n")[-1] =~ /testributor\/reporter/
+        File.write('test/test_helper.rb',
+          File.read('test/test_helper.rb') + "\nrequire 'testributor/reporter'")
       end
-      log "Running test file #{file_name}"
-      results = JSON.parse(Testributor.command("bin/rake test #{file_name}"))
-
-      report_results(results)
+      log "Running #{command}"
+      Dir.chdir(Testributor::Worker::PROJECT_DIR) do
+        result = Testributor.command(command)
+        report_results(
+          begin
+            JSON.parse(result)
+          rescue
+            Testributor.log result
+          end
+        )
+      end
     end
 
     # Use only the first 6 characters from each SHA1 to compare

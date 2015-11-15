@@ -9,7 +9,7 @@ class TestJobTest < MiniTest::Test
     subject do
       Testributor::TestJob.new(
         { "test_job" => { "commit_sha" => "12345" },
-          "file_name" => "test/models/user_test.rb" }, worker)
+          "command" => "test/models/user_test.rb" }, worker)
     end
     
     before do
@@ -28,7 +28,7 @@ class TestJobTest < MiniTest::Test
       it "assigns instance variables" do
         Testributor::Worker.stub_any_instance(:create_project_repo, nil) do
           subject.commit_sha.must_equal '12345'
-          subject.file_name.must_equal 'test/models/user_test.rb'
+          subject.command.must_equal 'test/models/user_test.rb'
           subject.repo.is_a?(Rugged::Repository).must_equal true
         end
       end
