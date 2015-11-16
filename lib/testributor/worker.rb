@@ -41,11 +41,7 @@ module Testributor
     def setup_test_environment
       log "Setting up environment"
       Dir.chdir(PROJECT_DIR) do
-        # Inject our gem in the Gemfile
-        # What if there is not Gemfile? (could it be?)
         Testributor.command('git reset --hard')
-        Testributor.command(%q{echo 'gem "testributor", group: :test' >> Gemfile})
-
         overridden_files.each do |file|
           log "Creating #{file["path"]}"
           dirname = File.dirname(file["path"])

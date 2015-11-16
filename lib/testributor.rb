@@ -9,9 +9,11 @@ module Testributor
   end
 
   # Runs a system command and streams the output to the log if log_output is
-  # true. In any case the output is returned
+  # true. In any case a Hash is returns with the command output and the
+  # a "success" key which is true when the command's exit code indicates
+  # a successfull command.
   def self.command(command_str, log_output=true)
-    stdin, stdout, stderr = Open3.popen3(command_str)
+    stdin, stdout, stderr, wait_thread = Open3.popen3(command_str)
     final_output = ''
     stdout.each do |s|
       final_output << s
@@ -19,10 +21,11 @@ module Testributor
     end
 
     stderr.each do |s|
+      final_output << s
       log_output && log(s)
     end
 
-    final_output
+    { output: final_output, success: wait_thread.value.success? }
   end
 end
 

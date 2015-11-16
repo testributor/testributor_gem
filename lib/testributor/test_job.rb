@@ -18,25 +18,16 @@ module Testributor
         worker.setup_test_environment
       end
 
-      # Unless already required the reporter on this file
-      # inject our own reporter by requiring on the top of the file to run
-      # unless File.open(command, &:gets) =~ /testributor\/reporter/
-      #   log "Injecting our reporter"
-      #   File.write(
-      #     command, "require 'testributor/reporter'\n" + File.read(command))
-      # end
-      unless File.read('test/test_helper.rb').split("\n")[-1] =~ /testributor\/reporter/
-        File.write('test/test_helper.rb',
-          File.read('test/test_helper.rb') + "\nrequire 'testributor/reporter'")
-      end
       log "Running #{command}"
       Dir.chdir(Testributor::Worker::PROJECT_DIR) do
         result = Testributor.command(command)
         report_results(
+          # The results are either strcutured as JSON or raw. When raw, we
+          # assign the output to the result key
           begin
-            JSON.parse(result)
+            JSON.parse(result[:output]).merge(success: result[:success])
           rescue
-            Testributor.log result
+            { result: result[:output], success: result[:success] }
           end
         )
       end
@@ -51,7 +42,7 @@ module Testributor
 
     def current_commit_sha
       Dir.chdir(Testributor::Worker::PROJECT_DIR) do
-        Testributor.command("git rev-parse HEAD", false).strip
+        Testributor.command("git rev-parse HEAD", false)[:output].strip
       end
     end
 

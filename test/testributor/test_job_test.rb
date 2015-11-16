@@ -8,7 +8,7 @@ class TestJobTest < MiniTest::Test
 
     subject do
       Testributor::TestJob.new(
-        { "test_job" => { "commit_sha" => "12345" },
+        { "test_run" => { "commit_sha" => "12345" },
           "command" => "test/models/user_test.rb" }, worker)
     end
     
