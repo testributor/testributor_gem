@@ -25,9 +25,9 @@ module Testributor
           # The results are either strcutured as JSON or raw. When raw, we
           # assign the output to the result key
           begin
-            JSON.parse(result[:output]).merge(success: result[:success])
+            JSON.parse(result[:output]).merge(status: result[:result_type])
           rescue
-            { result: result[:output], success: result[:success] }
+            { result: result[:output], status: result[:result_type] }
           end
         )
       end

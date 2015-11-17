@@ -51,7 +51,8 @@ module Testributor
           File.write(file["path"], file["contents"])
         end
 
-        log "Running build commands"
+        log "Running build commands:"
+        log build_commands
         Testributor.command("#{build_commands}") if build_commands && build_commands != ''
       end
     end
