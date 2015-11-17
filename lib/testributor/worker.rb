@@ -13,6 +13,11 @@ module Testributor
     def initialize(app_id, app_secret)
       @api_client = Client.new(app_id, app_secret)
       current_project_response = @api_client.get_current_project
+      docker_image = current_project_response["docker_image"]
+      if docker_image && docker_image["name"] == 'ruby' && docker_image["version"] != RUBY_VERSION
+        Testributor.force_ruby_version = docker_image["version"]
+      end
+
       # TODO: Consider creating a new model for current_project
       @repo_owner = current_project_response["repository_owner"]
       @repo_name = current_project_response["repository_name"]
@@ -53,7 +58,8 @@ module Testributor
 
         log "Running build commands:"
         log build_commands
-        Testributor.command("#{build_commands}") if build_commands && build_commands != ''
+        File.write('build_commands.sh', build_commands)
+        Testributor.command("/bin/bash build_commands.sh") if build_commands && build_commands != ''
       end
     end
 

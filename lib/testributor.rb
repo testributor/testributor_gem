@@ -2,6 +2,14 @@ module Testributor
   # Use the SSL certificate provided by heroku for now
   API_URL = ENV["API_URL"] || "https://testributor.herokuapp.com/api/v1/"
 
+  def self.force_ruby_version=(value)
+    @force_ruby_version = value
+  end
+
+  def self.force_ruby_version
+    @force_ruby_version
+  end
+
   # These should much the codes on the testributor side
   RESULT_TYPES = {
     passed: 2,
@@ -22,7 +30,9 @@ module Testributor
   # - failed (1) when exit code is not success and no stderr output is written
   # - error (2) when exit code is not success and there are contents in stderr
   def self.command(command_str, log_output=true)
-    stdin, stdout, stderr, wait_thread = Open3.popen3(command_str)
+    final_command_str = force_ruby_version ? "rvm #{force_ruby_version} do #{command_str}"  : command_str
+    puts final_command_str
+    stdin, stdout, stderr, wait_thread = Open3.popen3(final_command_str)
     standard_output = ''
     standard_error = ''
     stdout.each do |s|
