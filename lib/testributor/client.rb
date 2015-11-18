@@ -14,13 +14,15 @@ module Testributor
       token.request(:get, 'projects/current').parsed
     end
 
-    # Asks the testributor API for a job to run
-    def fetch_job_to_run
-      token.request(:patch, 'test_jobs/bind_next_pending').parsed
+    # Asks the testributor API for a batch of jobs to run
+    def fetch_jobs
+      token.request(:patch, 'test_jobs/bind_next_batch').parsed
     end
 
-    def update_test_job(id, params)
-      token.request(:patch, "test_jobs/#{id}", params: params).parsed
+    # Sends multiple job results to testributor in one call
+    def update_test_jobs(params)
+      token.request(:patch, "test_jobs/batch_update",
+                    body: { jobs: params }).parsed
     end
   end
 end

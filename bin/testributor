@@ -2,4 +2,4 @@
 
 require 'testributor'
 
-Testributor::Worker.new(ENV['APP_ID'],ENV['APP_SECRET']).run
+Testributor.start
