@@ -52,10 +52,6 @@ module Testributor
       redis.hdel(Testributor::REDIS_REPORTS_HASH, reports.keys)
     end
 
-    def redis
-      Testributor.redis
-    end
-
     # Use different redis connection for each thread
     def redis
       @redis ||= Redis.new(

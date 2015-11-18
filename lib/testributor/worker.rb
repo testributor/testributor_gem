@@ -8,7 +8,7 @@ module Testributor
   # Testributor::REDIS_JOBS_LIST after that. If after trying to get a new job
   # from the REDIS_JOBS_LIST, no job is found, the method sleeps for
   # NO_JOBS_IN_QUEUE_TIMEOUT_SECONDS seconds to avoid hitting the redis database
-  # to freqeuntly even if no jobs are pending.
+  # to frequently even if no jobs are queued.
   class Worker
     NO_JOBS_IN_QUEUE_TIMEOUT_SECONDS = 3
 
