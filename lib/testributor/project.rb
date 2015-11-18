@@ -1,0 +1,109 @@
+module Testributor
+  # This class wraps the current project response. It is responsible for
+  # the git repository setup.
+  class Project
+    DIRECTORY = ENV["HOME"] + '/.testributor'
+
+    attr_reader :repo_owner, :repo_name, :github_access_token, :repo,
+      :build_commands, :overridden_files
+
+    def initialize(current_project_response)
+      set_force_ruby_version_if_needed(current_project_response["docker_image"])
+
+      @repo_owner = current_project_response["repository_owner"]
+      @repo_name = current_project_response["repository_name"]
+      @github_access_token = current_project_response["github_access_token"]
+      @build_commands = current_project_response["build_commands"]
+      @overridden_files = current_project_response["files"]
+      create_project_directory
+      fetch_project_repo
+      # Setup the environment because TestJob#run will not setup the
+      # project if the commit is the current commit.
+      setup_test_environment
+      @repo = Rugged::Repository.new(DIRECTORY)
+    end
+
+    # Perfoms any actions needed to prepare the projects directory for a
+    # job on a the specified commit
+    def prepare_for_commit(commit_sha)
+      fetch_project_repo if !repo.exists?(commit_sha)
+
+      if current_commit_sha[0..5] != commit_sha[0..5] # commit changed
+        setup_test_environment(commit_sha)
+      end
+    end
+
+    private
+
+    # Sets the Testributor.force_ruby_version to the user's ruby when that ruby
+    # is different from the current (in which this gem is run). We use this
+    # instance variable to wrap all commands in "rvm ruby_version do" so that
+    # user's commands run in the user's ruby, not the one loaded for testributor
+    # gem.
+    def set_force_ruby_version_if_needed(docker_image)
+      if docker_image && docker_image["name"] == 'ruby' &&
+        docker_image["version"] != RUBY_VERSION
+
+        Testributor.force_ruby_version = docker_image["version"]
+      end
+    end
+
+    def current_commit_sha
+      Dir.chdir(DIRECTORY) do
+        Testributor.command("git rev-parse HEAD", false)[:output].strip
+      end
+    end
+
+    def create_project_directory
+      unless File.exists?(DIRECTORY)
+        log "Creating directory #{DIRECTORY}"
+        Dir.mkdir(DIRECTORY)
+      end
+    end
+
+    def fetch_project_repo
+      log "Fetching repo"
+      Dir.chdir(DIRECTORY) do
+        Testributor.command("git init")
+        Testributor.command("git pull https://#{github_access_token}@github.com/#{repo_owner}/#{repo_name}.git")
+      end
+    end
+
+    # TODO: Handle the following case gracefully:
+    # Testributor::Worker#run has already fetched the repo if the commit is not known.
+    # Still, there might be a case that the commit cannot be found even after
+    # pulling the repo. E.g. The history was rewritten somehow (do the commits
+    # get lost then?) or the repo has been reset (deleted and repushed). This is
+    # an edge case but our worker should probably inform katana about this (so
+    # katana can notify the users).
+    def setup_test_environment(commit_sha=nil)
+      log "Setting up environment"
+      Dir.chdir(DIRECTORY) do
+        # reset hard to the specified commit (or simply HEAD if no commit is
+        # specified) and drop any changes.
+        # TODO: remove old project if any
+        Testributor.command("git reset --hard #{commit_sha}")
+        Testributor.command("git clean -df")
+        overridden_files.each do |file|
+          log "Creating #{file["path"]}"
+          dirname = File.dirname(file["path"])
+          unless File.directory?(dirname)
+            FileUtils.mkdir_p(dirname)
+          end
+          File.write(file["path"], file["contents"])
+        end
+
+        log "Running build commands:"
+        log build_commands
+        if build_commands && build_commands != ''
+          File.write('build_commands.sh', build_commands)
+          Testributor.command("/bin/bash build_commands.sh")
+        end
+      end
+    end
+
+    def log(message)
+      Testributor.log(message)
+    end
+  end
+end
