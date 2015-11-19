@@ -76,19 +76,22 @@ module Testributor
   # - passed (0) when exit code is success
   # - failed (1) when exit code is not success and no stderr output is written
   # - error (2) when exit code is not success and there are contents in stderr
-  def self.command(command_str, log_output=true)
+  def self.command(command_str, options={})
+    options = {log_output: true, return_duration: false}.merge(options)
     final_command_str = force_ruby_version ? "rvm #{force_ruby_version} do #{command_str}"  : command_str
+    start_time_at = Time.now
     stdin, stdout, stderr, wait_thread = Open3.popen3(final_command_str)
+    duration = Time.now - start_time_at
     standard_output = ''
     standard_error = ''
     stdout.each do |s|
       standard_output << s
-      log_output && log(s)
+      options[:log_output] && log(s)
     end
 
     stderr.each do |s|
       standard_error << s
-      log_output && log(s)
+      options[:log_output] && log(s)
     end
 
     result_type =
@@ -100,7 +103,10 @@ module Testributor
         RESULT_TYPES[:error]
       end
 
-    { output: (standard_output + standard_error).strip, result_type: result_type }
+    h = {
+      output: (standard_output + standard_error).strip, result_type: result_type
+    }
+    options[:return_duration] ? h.merge!(duration_seconds: duration) : h
   end
 end
 

@@ -17,6 +17,7 @@ module Testributor
         if running_low_on_jobs
           if (jobs = client.fetch_jobs).any?
             jobs.each do |job|
+              job.merge!(queued_at_seconds_since_epoch: Time.now.utc.to_i)
               redis.lpush(Testributor::REDIS_JOBS_LIST, job.to_json)
             end
             sleep LIST_CHECK_TIMEOUT_SECONDS

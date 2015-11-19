@@ -20,7 +20,9 @@ module Testributor
           result = nil
           job = JSON.parse(job)
           Dir.chdir(Project::DIRECTORY) do
-            result = TestJob.new(job).run
+            result = TestJob.new(
+              job.merge!('started_at_seconds_since_epoch' => Time.now.utc.to_i)
+            ).run
           end
           redis.hset(Testributor::REDIS_REPORTS_HASH, job["id"], result.to_json)
         else

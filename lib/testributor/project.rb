@@ -50,7 +50,7 @@ module Testributor
 
     def current_commit_sha
       Dir.chdir(DIRECTORY) do
-        Testributor.command("git rev-parse HEAD", false)[:output].strip
+        Testributor.command("git rev-parse HEAD", log_output: false)[:output].strip
       end
     end
 
