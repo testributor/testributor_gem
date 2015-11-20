@@ -23,6 +23,14 @@ module Testributor
     @force_ruby_version
   end
 
+  def self.uuid=(uuid)
+    @uuid = uuid
+  end
+
+  def self.uuid
+    @uuid
+  end
+
   # These should much the codes on the testributor side
   RESULT_TYPES = {
     passed: 2,
