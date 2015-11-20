@@ -19,11 +19,19 @@ module Testributor
         if job
           result = nil
           job = JSON.parse(job)
+          # Skip blacklisted test runs
+          test_run_id = job["test_run"]["id"]
+          if redis.get(Testributor.redis_blacklisted_test_run_key(test_run_id))
+            log "Skipping job #{job["id"]} for blacklisted test run #{test_run_id}"
+            next
+          end
+
           Dir.chdir(Project::DIRECTORY) do
             result = TestJob.new(
               job.merge!('started_at_seconds_since_epoch' => Time.now.utc.to_i)
             ).run
           end
+          result.merge!("test_run_id" => job["test_run"]["id"])
           redis.hset(Testributor::REDIS_REPORTS_HASH, job["id"], result.to_json)
         else
           sleep NO_JOBS_IN_QUEUE_TIMEOUT_SECONDS

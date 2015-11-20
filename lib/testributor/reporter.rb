@@ -21,15 +21,18 @@ module Testributor
     # TODO: Stop the manager thread until the reporter succeeds. We don't want
     # jobs assigned to workers when there is a problem.
     REPORT_ERROR_TIMEOUT_SECONDS = 60
+    BLACKLIST_EXPIRATION_SECONDS = 3600
 
     def run
       while true
         reports = redis.hgetall(Testributor::REDIS_REPORTS_HASH)
         if reports.any?
-          if !report(redis.hgetall(Testributor::REDIS_REPORTS_HASH))
+          if !(response = report(reports))
             log "Sleeping due to errors"
             sleep REPORT_ERROR_TIMEOUT_SECONDS
             next
+          else
+            blacklist_test_runs(response['delete_test_runs'])
           end
         else
           sleep REPORTING_FREQUENCY_SECONDS
@@ -42,14 +45,27 @@ module Testributor
     # @param reports [Hash] the list of completed jobs to send to testributor
     def report(reports)
       log "Sending reports to testributor"
-      begin
-        result = client.update_test_jobs(reports)
-        return false if result.is_a?(Hash) && result[:error]
-      rescue
-        return false
-      end
+      result = client.update_test_jobs(reports) rescue false
+      return false if (!result || result[:error])
 
       redis.hdel(Testributor::REDIS_REPORTS_HASH, reports.keys)
+
+      result
+    end
+
+    # Add an expiring key for each deleted test_run (blacklist).
+    # When the user pops a job for a blacklisted run it will be skipped.
+    # The keys will expire so they will only be run again if the job stays
+    # in queue for too long.
+    def blacklist_test_runs(test_run_ids)
+      return false if test_run_ids.to_a.empty?
+
+      log "Blacklisting jobs for TestRuns: #{test_run_ids}"
+      test_run_ids.each do |test_run_id|
+        key = Testributor.redis_blacklisted_test_run_key(test_run_id)
+        redis.setnx(key, 1)
+        redis.expire(key, BLACKLIST_EXPIRATION_SECONDS)
+      end
     end
 
     # Use different redis connection for each thread

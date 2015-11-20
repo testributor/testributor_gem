@@ -31,6 +31,10 @@ module Testributor
     @uuid
   end
 
+  def self.redis_blacklisted_test_run_key(test_run_id)
+    "blacklist_test_run_#{test_run_id}"
+  end
+
   # These should much the codes on the testributor side
   RESULT_TYPES = {
     passed: 2,
