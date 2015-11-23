@@ -3,9 +3,11 @@ module Testributor
   # the git repository setup.
   class Project
     DIRECTORY = ENV["HOME"] + '/.testributor'
+    # Should match the one on testributor project files
+    BUILD_COMMANDS_PATH = 'testributor_build_commands.sh'
 
     attr_reader :repo_owner, :repo_name, :github_access_token, :repo,
-      :build_commands, :overridden_files
+      :overridden_files
 
     def initialize(current_project_response)
       set_force_ruby_version_if_needed(current_project_response["docker_image"])
@@ -13,7 +15,6 @@ module Testributor
       @repo_owner = current_project_response["repository_owner"]
       @repo_name = current_project_response["repository_name"]
       @github_access_token = current_project_response["github_access_token"]
-      @build_commands = current_project_response["build_commands"]
       @overridden_files = current_project_response["files"]
       create_project_directory
       fetch_project_repo
@@ -93,11 +94,12 @@ module Testributor
           File.write(file["path"], file["contents"])
         end
 
+        # TODO: Store the result of this command and put is in the reporter's
+        # list to be sent.
         log "Running build commands:"
-        log build_commands
-        if build_commands && build_commands != ''
-          File.write('build_commands.sh', build_commands)
-          Testributor.command("/bin/bash build_commands.sh")
+        if File.exists?(BUILD_COMMANDS_PATH)
+          log File.read(BUILD_COMMANDS_PATH)
+          Testributor.command("/bin/bash #{BUILD_COMMANDS_PATH}")
         end
       end
     end
