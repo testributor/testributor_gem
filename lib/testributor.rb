@@ -2,10 +2,12 @@ module Testributor
   # Use the SSL certificate provided by heroku for now
   API_URL = ENV["API_URL"] || "https://testributor.herokuapp.com/api/v1/"
 
-  # TODO: Check if the environment variables match those provided by the
-  # selected redis docker image.
+  # We use the base_image installed redis for this gem. By default this
+  # redis listens on port 6380 (default is 6379). The reason is to avoid letting
+  # the user connect to this Redis by mistake (e.g. because no Redis image was
+  # selected in technologies).
   REDIS_HOST = ENV['REDIS_URL'] || '127.0.0.1'
-  REDIS_PORT = ENV['REDIS_PORT'] || '6379'
+  REDIS_PORT = ENV['REDIS_PORT'] || '6380'
   REDIS_DB = ENV['REDIS_DB'] || 'testributor'
 
   REDIS_JOBS_LIST = 'jobs'
