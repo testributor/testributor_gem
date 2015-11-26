@@ -52,6 +52,8 @@ module Testributor
   end
 
   def self.start
+    Thread.abort_on_exception = true
+
     Thread.current[:name] = "Main"
 
     @current_project = Project.new(client.get_current_project)
