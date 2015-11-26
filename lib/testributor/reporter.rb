@@ -24,7 +24,8 @@ module Testributor
     BLACKLIST_EXPIRATION_SECONDS = 3600
 
     def run
-      while true
+      log "Entering Reporter loop"
+      loop do
         reports = redis.hgetall(Testributor::REDIS_REPORTS_HASH)
         if reports.any?
           if !(response = report(reports))

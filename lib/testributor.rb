@@ -60,16 +60,19 @@ module Testributor
 
     @current_project = Project.new(client.get_current_project)
 
+    log "Starting Worker thread"
     worker_thread = Thread.new do
       Thread.current["name"] = "Worker"
       Testributor::Worker.new.run
     end
 
+    log "Starting Manager thread"
     manager_thread = Thread.new do
       Thread.current["name"] = "Manager"
       Testributor::Manager.new.run
     end
 
+    log "Starting Reporter thread"
     reporter_thread = Thread.new do
       Thread.current["name"] = "Reporter"
       Testributor::Reporter.new.run

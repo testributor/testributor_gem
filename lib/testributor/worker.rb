@@ -13,7 +13,8 @@ module Testributor
     NO_JOBS_IN_QUEUE_TIMEOUT_SECONDS = 3
 
     def run
-      while true
+      log "Entering Worker loop"
+      loop do
         job = redis.rpop(Testributor::REDIS_JOBS_LIST)
 
         if job

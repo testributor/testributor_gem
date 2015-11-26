@@ -13,7 +13,8 @@ module Testributor
     MINIMUM_NUMBER_OF_JOBS_IN_QUEUE = 2
 
     def run
-      while true
+      log "Entering Manager loop"
+      loop do
         if running_low_on_jobs
           if (jobs = client.fetch_jobs).any?
             jobs.each do |job|
