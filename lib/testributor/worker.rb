@@ -44,7 +44,13 @@ module Testributor
 
     # Use different redis connection for each thread
     def redis
-      @redis ||= Redis.new(
+      return @redis if @redis
+
+      log "Connecting to Redis: {"\
+            " host: #{Testributor::REDIS_HOST.inspect},"\
+            " port: #{Testributor::REDIS_PORT.inspect},"\
+            " db: #{Testributor::REDIS_DB.inspect} }"
+      @redis = Redis.new(
         :host => Testributor::REDIS_HOST,
         :port => Testributor::REDIS_PORT,
         :db => Testributor::REDIS_DB)
