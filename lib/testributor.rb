@@ -6,9 +6,9 @@ module Testributor
   # redis listens on port 6380 (default is 6379). The reason is to avoid letting
   # the user connect to this Redis by mistake (e.g. because no Redis image was
   # selected in technologies).
-  REDIS_HOST = ENV['REDIS_URL'] || '127.0.0.1'
-  REDIS_PORT = ENV['REDIS_PORT'] || '6380'
-  REDIS_DB = ENV['REDIS_DB'] || 'testributor'
+  REDIS_HOST = ENV['TESTRIBUTOR_REDIS_URL'] || '127.0.0.1'
+  REDIS_PORT = ENV['TESTRIBUTOR_REDIS_PORT'] || '6380'
+  REDIS_DB = ENV['TESTRIBUTOR_REDIS_DB'] || 'testributor'
 
   REDIS_JOBS_LIST = 'jobs'
   REDIS_REPORTS_HASH = 'reports'
