@@ -95,36 +95,48 @@ module Testributor
   # - passed (0) when exit code is success
   # - failed (1) when exit code is not success and no stderr output is written
   # - error (2) when exit code is not success and there are contents in stderr
+  # TODO: popen3 takes a :chdir option. Consider using this instead of Dir.chdir
+  # block.
   def self.command(command_str, options={})
     options = {log_output: true, return_duration: false}.merge(options)
     final_command_str = force_ruby_version ? "rvm #{force_ruby_version} do #{command_str}"  : command_str
     start_time_at = Time.now
-    stdin, stdout, stderr, wait_thread = Open3.popen3(final_command_str)
-    duration = Time.now - start_time_at
-    standard_output = ''
-    standard_error = ''
-    stdout.each do |s|
-      standard_output << s
-      options[:log_output] && log(s)
-    end
 
-    stderr.each do |s|
-      standard_error << s
-      options[:log_output] && log(s)
-    end
-
-    result_type =
-      if wait_thread.value.success?
-        RESULT_TYPES[:passed]
-      elsif standard_error.strip == ''
-        RESULT_TYPES[:failed]
-      else
-        RESULT_TYPES[:error]
+    # https://nickcharlton.net/posts/ruby-subprocesses-with-stdout-stderr-streams.html
+    # see: http://stackoverflow.com/a/1162850/83386
+    data = {:out => '', :err => ''}
+    result_type = nil
+    thread_name = Thread.current["name"]
+    Open3.popen3(final_command_str) do |stdin, stdout, stderr, thread|
+      # read each stream from a new thread
+      { :out => stdout, :err => stderr }.each do |key, stream|
+        # No need to "join" these threads since when "thread.value" is called
+        # some lines below, the streams will already be empty so the threads can
+        # be stopped with no problem.
+        Thread.new do
+          # give the same name as the caller thread to show in output
+          # This threads are just helpers to read both streams at the same time
+          # so the don't need a name on their own.
+          Thread.current[:name] = thread_name
+          until (line = stream.gets).nil? do
+            data[key] << line # append new lines
+            options[:log_output] && log(line) # append new lines
+          end
+        end
       end
 
-    h = {
-      output: (standard_output + standard_error).strip, result_type: result_type
-    }
+      result_type =
+        if thread.value.success?
+          RESULT_TYPES[:passed]
+        elsif data[:err].strip == ''
+          RESULT_TYPES[:failed]
+        else
+          RESULT_TYPES[:error]
+        end
+    end
+
+    h = { output: (data[:out] + data[:err]).strip, result_type: result_type }
+
     options[:return_duration] ? h.merge!(duration_seconds: duration) : h
   end
 end
