@@ -86,7 +86,8 @@ module Testributor
   # We might want to implement a different logging mechanism.
   # For now, it's just "puts".
   def self.log(message)
-    puts "[#{Thread.current[:name]}]".ljust(15) << message
+    now = Time.now.utc.strftime "%H:%M:%S UTC"
+    puts "[#{now}][#{Thread.current[:name]}]".ljust(25) << message
   end
 
   # Runs a system command and streams the output to the log if log_output is
