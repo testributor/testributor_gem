@@ -6,7 +6,8 @@ module Testributor
   class Client
     attr_reader :token
     REQUEST_ERROR_TIMEOUT_SECONDS = 10
-    CONNECTION_ERRORS = [Faraday::ConnectionFailed, Net::ReadTimeout]
+    CONNECTION_ERRORS = [Faraday::ConnectionFailed, Net::ReadTimeout,
+                         OAuth2::Error]
 
     # Use this method only when the exception occurs in testributor's side.
     # In this way, there is no need to restart the gem, each time testributor
@@ -16,12 +17,32 @@ module Testributor
       begin
         yield
       rescue *CONNECTION_ERRORS => e
+        # When OAuth2::Error occurs, e.code values can be one of the following:
+        # :invalid_request,
+        # :invalid_client,
+        # :invalid_token,
+        # :invalid_grant,
+        # :unsupported_grant_type,
+        # :invalid_scope.
+        # If e.code is one of the above(not nil), then we assume something
+        # is wrong in # the gem's side (code, configuration etc.).
+        # Raise to let us know
+        # If e.code is nil, no oauth error occurred.
+        # As a result, there is probably a problem in the server's side.
+        # In this case, we retry until the error is fixed in server.
+        # Check the following url for details:
+        # https://github.com/intridea/oauth2/blob/master/lib/oauth2/error.rb
+        if e.respond_to?(:code) && e.code && e.is_a?(OAuth2::Error)
+          raise e and return
+        end
+
         # TODO : Send us a notification
-        log "Error occured: #{e.message}"
-        log e.inspect
-        log "Retrying in #{REQUEST_ERROR_TIMEOUT_SECONDS} seconds"
-        sleep(REQUEST_ERROR_TIMEOUT_SECONDS)
-        retry
+        log "Error occured: #{e.message}\n #{e.inspect}"
+        if Testributor.allow_retries_on_failure
+          log "Retrying in #{REQUEST_ERROR_TIMEOUT_SECONDS} seconds"
+          sleep(REQUEST_ERROR_TIMEOUT_SECONDS)
+          retry
+        end
       end
     end
 
