@@ -13,6 +13,14 @@ module Testributor
   REDIS_JOBS_LIST = 'jobs'
   REDIS_REPORTS_HASH = 'reports'
 
+  def self.allow_retries_on_failure
+    @allow_retries_on_failure
+  end
+
+  def self.allow_retries_on_failure=(allow_retries)
+    @allow_retries_on_failure = allow_retries
+  end
+
   def self.current_project
     @current_project
   end
@@ -144,6 +152,8 @@ module Testributor
     options[:return_duration] ? h.merge!(duration_seconds: duration) : h
   end
 end
+
+Testributor.allow_retries_on_failure = true
 
 require 'testributor/manager'
 require 'testributor/reporter'
