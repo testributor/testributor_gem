@@ -96,6 +96,7 @@ module Testributor
   def self.log(message)
     now = Time.now.utc.strftime "%H:%M:%S UTC"
     puts "[#{now}][#{Thread.current[:name]}]".ljust(25) << message
+    STDOUT.flush # Always flush the output to show the messages immediatelly
   end
 
   # Runs a system command and streams the output to the log if log_output is
