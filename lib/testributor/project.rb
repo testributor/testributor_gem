@@ -66,7 +66,7 @@ module Testributor
       log "Fetching repo"
       Dir.chdir(DIRECTORY) do
         Testributor.command("git init")
-        Testributor.command("git pull https://#{github_access_token}@github.com/#{repo_owner}/#{repo_name}.git")
+        Testributor.command("git fetch https://#{github_access_token}@github.com/#{repo_owner}/#{repo_name}.git +refs/heads/*:refs/remotes/*")
       end
     end
 
