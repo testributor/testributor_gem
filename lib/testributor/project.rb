@@ -29,7 +29,10 @@ module Testributor
     def prepare_for_commit(commit_sha)
       fetch_project_repo if !repo.exists?(commit_sha)
 
-      if current_commit_sha[0..5] != commit_sha[0..5] # commit changed
+      current_commit = current_commit_sha[0..5]
+      if current_commit != commit_sha[0..5] # commit changed
+        log "Current commit ##{current_commit} does not match ##{commit_sha[0..5]}"
+        log "Setting up environment"
         setup_test_environment(commit_sha)
       end
     end
