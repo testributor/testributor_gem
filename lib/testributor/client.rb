@@ -7,7 +7,7 @@ module Testributor
     attr_reader :token
     REQUEST_ERROR_TIMEOUT_SECONDS = 10
     CONNECTION_ERRORS = [Faraday::ConnectionFailed, Net::ReadTimeout,
-                         OAuth2::Error]
+                         OAuth2::Error, Faraday::TimeoutError]
 
     # Use this method only when the exception occurs in testributor's side.
     # In this way, there is no need to restart the gem, each time testributor
