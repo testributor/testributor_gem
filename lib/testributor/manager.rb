@@ -17,6 +17,7 @@ module Testributor
       loop do
         if running_low_on_jobs
           if (jobs = client.fetch_jobs).any?
+            log "Fetched #{jobs.count} jobs to run"
             jobs.each do |job|
               job.merge!(queued_at_seconds_since_epoch: Time.now.utc.to_i)
               redis.lpush(Testributor::REDIS_JOBS_LIST, job.to_json)

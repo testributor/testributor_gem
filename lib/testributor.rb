@@ -53,18 +53,24 @@ module Testributor
   }
 
   def self.redis
-    @redis ||=
-      Redis.new(:host => REDIS_HOST, :port => REDIS_PORT, :db => REDIS_DB)
+    @redis
   end
 
   def self.client
-    @client ||= Client.new(ENV["APP_ID"], ENV["APP_SECRET"])
+    @client
   end
 
   def self.start
     Thread.abort_on_exception = true
 
     Thread.current[:name] = "Main"
+
+    # Don't memoize these to avoid races conditions between threads using it.
+    # http://lucaguidi.com/2014/03/27/thread-safety-with-ruby.html
+    # We initialize all shared variables once.
+    @client = Client.new(ENV["APP_ID"], ENV["APP_SECRET"])
+    @redis = Redis.new(:host => REDIS_HOST, :port => REDIS_PORT, :db => REDIS_DB)
+    @uuid = SecureRandom.uuid
 
     @current_project = Project.new(client.get_current_project)
 

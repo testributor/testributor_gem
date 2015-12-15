@@ -47,14 +47,12 @@ module Testributor
     end
 
     def initialize(app_id, app_secret)
+      Testributor.log "Client is being initialized"
       # Setup connection
       client = OAuth2::Client.new(app_id, app_secret, site: Testributor::API_URL)
       Testributor::Client.ensure_run do
         @token = client.client_credentials.get_token
       end
-
-      # If no uuid is already set, set it now
-      Testributor.uuid ||= SecureRandom.uuid
     end
 
     def get_current_project
