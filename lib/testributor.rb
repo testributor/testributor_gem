@@ -117,10 +117,11 @@ module Testributor
     data = {:out => '', :err => ''}
     result_type = nil
     thread_name = Thread.current["name"]
+    threads = []
     Open3.popen3(final_command_str) do |stdin, stdout, stderr, thread|
       # read each stream from a new thread
       { :out => stdout, :err => stderr }.each do |key, stream|
-        Thread.new do
+        threads << Thread.new do
           # give the same name as the caller thread to show in output
           # This threads are just helpers to read both streams at the same time
           # so the don't need a name on their own.
@@ -128,14 +129,11 @@ module Testributor
           until (line = stream.gets).nil? do
             data[key] << line # append new lines
             options[:log_output] && log(line) # append new lines
-          end rescue nil
-          # If we join the output threads, in case of exception these threads
-          # block (probably on "gets") and the code never returns
-          # If we don't join the threads, the "gets" will be called on a closed
-          # stream resulting in an exception. For this reason, we rescue from
-          # "gets" exceptions
+          end
         end
       end
+
+      threads.each(&:join)
 
       result_type =
         if thread.value.success?

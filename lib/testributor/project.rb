@@ -29,9 +29,9 @@ module Testributor
     def prepare_for_commit(commit_sha)
       fetch_project_repo if !repo.exists?(commit_sha)
 
-      current_commit = current_commit_sha[0..5]
-      if current_commit != commit_sha[0..5] # commit changed
-        log "Current commit ##{current_commit} does not match ##{commit_sha[0..5]}"
+      current_commit = current_commit_sha
+      if current_commit[0..5] != commit_sha[0..5] # commit changed
+        log "Current commit ##{current_commit[0..5]} does not match ##{commit_sha[0..5]}"
         log "Setting up environment"
         setup_test_environment(commit_sha)
       end
@@ -69,7 +69,15 @@ module Testributor
       log "Fetching repo"
       Dir.chdir(DIRECTORY) do
         Testributor.command("git init")
-        Testributor.command("git fetch https://#{github_access_token}@github.com/#{repo_owner}/#{repo_name}.git +refs/heads/*:refs/remotes/*")
+        Testributor.command("git remote add origin https://#{github_access_token}@github.com/#{repo_owner}/#{repo_name}")
+        Testributor.command("git fetch origin")
+        # A "random" commit to checkout. This creates the local HEAD so we can
+        # hard reset to something in setup_test_environment.
+        # TODO: Add a "default_branch" setting on katana and use that here
+        ref_to_checkout = Testributor.command(
+          "git ls-remote --heads -q | tail -n 1 | awk '{print $1}'",
+          log_output: false)[:output]
+        Testributor.command("git reset --hard #{ref_to_checkout}")
       end
     end
 
@@ -86,8 +94,15 @@ module Testributor
         # reset hard to the specified commit (or simply HEAD if no commit is
         # specified) and drop any changes.
         # TODO: remove old project if any
-        Testributor.command("git reset --hard #{commit_sha}")
+        if commit_sha.nil?
+          log "Resetting to default branch"
+          Testributor.command("git reset --hard")
+        else
+          log "Checking out commit #{commit_sha}"
+          Testributor.command("git reset --hard #{commit_sha}")
+        end
         Testributor.command("git clean -df")
+
         overridden_files.each do |file|
           log "Creating #{file["path"]}"
           dirname = File.dirname(file["path"])
