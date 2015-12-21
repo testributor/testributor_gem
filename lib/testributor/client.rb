@@ -6,8 +6,13 @@ module Testributor
   class Client
     attr_reader :token
     REQUEST_ERROR_TIMEOUT_SECONDS = 10
-    CONNECTION_ERRORS = [Faraday::ConnectionFailed, Net::ReadTimeout,
-                         OAuth2::Error, Faraday::TimeoutError]
+    CONNECTION_ERRORS = [
+      Faraday::ConnectionFailed,
+      Net::ReadTimeout,
+      OAuth2::Error,
+      Faraday::TimeoutError,
+      Testributor::InvalidSshKeyError
+    ]
 
     # Use this method only when the exception occurs in testributor's side.
     # In this way, there is no need to restart the gem, each time testributor
@@ -58,8 +63,8 @@ module Testributor
       end
     end
 
-    def get_current_project
-      request(:get, 'projects/current').parsed
+    def get_setup_data
+      request(:get, 'projects/setup_data').parsed
     end
 
     # Asks the testributor API for a batch of jobs to run

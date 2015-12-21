@@ -1,9 +1,8 @@
 # This is a wrapper class around the test_job response from testributor
 module Testributor
   class TestJob
-    attr_reader :id, :commit_sha, :command, :repo, :api_client,
-      :sent_at_seconds_since_epoch, :queued_at_seconds_since_epoch,
-      :started_at_seconds_since_epoch
+    attr_reader :id, :commit_sha, :command, :sent_at_seconds_since_epoch,
+      :queued_at_seconds_since_epoch, :started_at_seconds_since_epoch
 
     def initialize(job_response)
       @id = job_response["id"]

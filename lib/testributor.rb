@@ -3,7 +3,7 @@ module Testributor
 
   BENCHMARK_COMMAND_RANGE_SECONDS = 2..60
 
-  # Use the SSL certificate provided by heroku for now
+  # Use the SSL certificate provided by Heroku for now
   API_URL = ENV["API_URL"] || "https://testributor.herokuapp.com/api/v1/"
 
   # We use the base_image installed redis for this gem. By default this
@@ -114,7 +114,7 @@ module Testributor
     # workers die so it should be no problem.
     @redis.flushdb
 
-    @current_project = Project.new(client.get_current_project)
+    @current_project = Project.new(client.get_setup_data)
 
     log "Starting Worker thread"
     worker_thread = Thread.new do
@@ -144,7 +144,7 @@ module Testributor
   def self.log(message)
     now = Time.now.utc.strftime "%H:%M:%S UTC"
     puts "[#{now}][#{short_uuid}][#{Thread.current[:name]}] ".ljust(25) << message
-    STDOUT.flush # Always flush the output to show the messages immediatelly
+    STDOUT.flush # Always flush the output to show the messages immediately
   end
 
   # Runs a system command and streams the output to the log if log_output is
@@ -168,6 +168,7 @@ module Testributor
     # see: http://stackoverflow.com/a/1162850/83386
     data = {:out => '', :err => ''}
     result_type = nil
+    exit_code = nil
     thread_name = Thread.current["name"]
     threads = []
 
@@ -200,12 +201,25 @@ module Testributor
         else
           RESULT_TYPES[:error]
         end
+
+      # Keep the system exit code too. Useful for general purpose commands.
+      exit_code = thread.value.exitstatus
     end
     duration = Time.now - start_time_at
 
-    h = { output: (data[:out] + data[:err]).strip, result_type: result_type }
+    h = {
+      output: (data[:out] + data[:err]).strip,
+      result_type: result_type,
+      exit_code: exit_code
+    }
 
     options[:return_duration] ? h.merge!(duration_seconds: duration) : h
+  end
+
+  class InvalidSshKeyError < StandardError
+    def initialize(msg='No repository access - Check your SSH key')
+      super
+    end
   end
 end
 

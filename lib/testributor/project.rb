@@ -9,17 +9,22 @@ module Testributor
     DIRECTORY = ENV["HOME"] + '/.testributor'
     # Should match the one on testributor project files
     BUILD_COMMANDS_PATH = 'testributor_build_commands.sh'
+    SSH_DIRECTORY = ENV['HOME'] + '/.ssh'
 
-    attr_reader :repo_owner, :repo_name, :github_access_token, :repo,
-      :overridden_files
+    attr_reader :repository_ssh_url, :repo, :overridden_files, :ssh_key_private,
+      :ssh_key_public
 
-    def initialize(current_project_response)
-      set_force_ruby_version_if_needed(current_project_response["docker_image"])
+    def initialize(setup_data_response)
+      current_project = setup_data_response['current_project']
+      current_worker_group = setup_data_response['current_worker_group']
+      set_force_ruby_version_if_needed(current_project["docker_image"])
 
-      @repo_owner = current_project_response["repository_owner"]
-      @repo_name = current_project_response["repository_name"]
-      @github_access_token = current_project_response["github_access_token"]
-      @overridden_files = current_project_response["files"]
+      @repository_ssh_url = current_project["repository_ssh_url"]
+      @overridden_files = current_project["files"]
+      @ssh_key_private = current_worker_group['ssh_key_private']
+      @ssh_key_public = current_worker_group['ssh_key_public']
+      create_ssh_keys
+      check_ssh_key_validity
       create_project_directory
       fetch_project_repo
       # Setup the environment because TestJob#run will not setup the
@@ -28,7 +33,7 @@ module Testributor
       @repo = Rugged::Repository.new(DIRECTORY) unless ENV["BENCHMARK_MODE"]
     end
 
-    # Perfoms any actions needed to prepare the projects directory for a
+    # Performs any actions needed to prepare the projects directory for a
     # job on a the specified commit
     def prepare_for_commit(commit_sha)
       return if ENV["BENCHMARK_MODE"]
@@ -37,7 +42,6 @@ module Testributor
       current_commit = current_commit_sha
       if current_commit[0..5] != commit_sha[0..5] # commit changed
         log "Current commit ##{current_commit[0..5]} does not match ##{commit_sha[0..5]}"
-        log "Setting up environment"
         setup_test_environment(commit_sha)
       end
     end
@@ -76,7 +80,7 @@ module Testributor
 
       Dir.chdir(DIRECTORY) do
         Testributor.command("git init")
-        Testributor.command("git remote add origin https://#{github_access_token}@github.com/#{repo_owner}/#{repo_name}")
+        Testributor.command("git remote add origin #{repository_ssh_url}")
         Testributor.command("git fetch origin")
         # A "random" commit to checkout. This creates the local HEAD so we can
         # hard reset to something in setup_test_environment.
@@ -88,7 +92,7 @@ module Testributor
       end
     end
 
-    # TODO: Handle the following case gracefully:
+    # TODO Handle the following case gracefully:
     # Testributor::Worker#run has already fetched the repo if the commit is not known.
     # Still, there might be a case that the commit cannot be found even after
     # pulling the repo. E.g. The history was rewritten somehow (do the commits
@@ -106,7 +110,7 @@ module Testributor
 
         # reset hard to the specified commit (or simply HEAD if no commit is
         # specified) and drop any changes.
-        # TODO: remove old project if any
+        # TODO remove old project if any
         if commit_sha.nil?
           log "Resetting to default branch"
           Testributor.command("git reset --hard")
@@ -128,7 +132,7 @@ module Testributor
           File.write(file["path"], file["contents"])
         end
 
-        # TODO: Store the result of this command and put it in the reporter's
+        # TODO Store the result of this command and put it in the reporter's
         # list to be sent.
         log "Running build commands with available variables: #{build_commands_variables}"
         if File.exists?(BUILD_COMMANDS_PATH)
@@ -161,6 +165,42 @@ module Testributor
 
     def log(message)
       Testributor.log(message)
+    end
+
+    def create_ssh_keys
+      raise Testributor::InvalidSshKeyError if ssh_key_private.nil?
+
+      log 'Creating `~/.ssh/id_rsa` and `~/.ssh/id_rsa.pub` files'
+      unless File.directory?(SSH_DIRECTORY)
+        FileUtils.mkdir_p(SSH_DIRECTORY)
+      end
+      File.write("#{SSH_DIRECTORY}/id_rsa", ssh_key_private)
+      File.write("#{SSH_DIRECTORY}/id_rsa.pub", ssh_key_public)
+
+      log 'Set the appropriate permissions'
+      Testributor.command('chmod 700 ~/.ssh')
+      Testributor.command('chmod 600 ~/.ssh/id_rsa')
+      Testributor.command('chmod 644 ~/.ssh/id_rsa.pub')
+
+      # The following 2 lines are not currently required.
+      # Uncomment if the SSH Agent is needed.
+      # log 'Add the SSH key to the SSH agent'
+      # Testributor.command('ssh-add ~/.ssh/id_rsa')
+
+      # Configure SSH to avoid prompting to add the remote host to the
+      # known_hosts file.
+      Testributor.command('printf "Host *\n    StrictHostKeyChecking no\n" > ~/.ssh/config')
+    end
+
+    def check_ssh_key_validity
+      remote_host = repository_ssh_url.split(":").first # e.g. git@github.com
+      result = Testributor.command("ssh -T #{remote_host}")
+
+      # SSH exits with the exit status of the remote command or with 255 if an
+      # error occurred.
+      if result[:exit_code] == 255
+        raise Testributor::InvalidSshKeyError
+      end
     end
   end
 end
