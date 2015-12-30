@@ -37,6 +37,34 @@ module Testributor
     @uuid = uuid
   end
 
+  def self.worker_current_job_started_at=(time)
+    @worker_current_job_started_at = time
+  end
+
+  def self.worker_current_job_cost_prediction=(cost_prediction)
+    @worker_current_job_cost_prediction = cost_prediction
+  end
+
+  # Returns the number of seconds of workload left on the worker.
+  # This is the cost prediction of the current working job minus the number
+  # of seconds the worker is already running this job.
+  # If started at is set but prediction is nil it means the current job has no
+  # prediction so we return nil. The caller (Manager) should not request for more
+  # work until this job is done since we don't know how long it will take.
+  # We are being pessimistic here, as we do on the katana side.
+  def self.workload_on_worker
+    if @worker_current_job_cost_prediction.nil?
+      if @worker_current_job_started_at.nil?
+        return 0 # There is no current job
+      else
+        return nil # We have no prediction for the current job
+      end
+    end
+
+    [@worker_current_job_cost_prediction -
+      (Time.now - @worker_current_job_started_at), 0].max
+  end
+
   def self.uuid
     @uuid
   end

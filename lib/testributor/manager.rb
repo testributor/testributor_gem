@@ -1,21 +1,25 @@
 module Testributor
   # This class implements all the code run in the Manager thread.
-  # The main method (#run) checks every LIST_CHECK_TIMEOUT_SECONDS seconds the
-  # Testributor::REDIS_JOBS_LIST on redis and the number of jobs is less or
-  # equal to MINIMUM_NUMBER_OF_JOBS_IN_QUEUE, it requests more
-  # jobs from testributor. If testributor replied with no jobs the method sleeps
+  # The main method (#run) checks every LIST_CHECK_TIMEOUT_SECONDS seconds
+  # to see wether the worker is running low on workload. If that's the case,
+  # it loads more work from testributor to the worker's queue.
+  #
+  # If testributor replied with no jobs the method sleeps
   # for NO_JOBS_ON_TESTRIBUTOR_TIMEOUT_SECONDS to avoid hitting testributor
   # too frequently when there is nothing to do.
   # TODO: Use an exponential backoff timeout?
   class Manager
-    LIST_CHECK_TIMEOUT_SECONDS = 1
+    # Don't check to often because each time we parse the list we are also
+    # parsing the JSONed jobs and sum up the cost predictions. We need the CPU
+    # for the Worker thread. Don't waste it here.
+    LIST_CHECK_TIMEOUT_SECONDS = 3
     NO_JOBS_ON_TESTRIBUTOR_TIMEOUT_SECONDS = 5
-    MINIMUM_NUMBER_OF_JOBS_IN_QUEUE = 2
+    LOW_WORKLOAD_LIMIT_SECONDS = 10
 
     def run
       log "Entering Manager loop"
       loop do
-        if running_low_on_jobs
+        if low_workload?
           if (jobs = client.fetch_jobs).any?
             log "Fetched #{jobs.count} jobs to run"
             jobs.each do |job|
@@ -34,9 +38,25 @@ module Testributor
 
     private
 
-    def running_low_on_jobs
-      redis.llen(Testributor::REDIS_JOBS_LIST) <=
-        MINIMUM_NUMBER_OF_JOBS_IN_QUEUE
+    def low_workload?
+      on_worker = Testributor.workload_on_worker
+      in_queue = workload_in_queue
+
+      # Don't fetch more work if there are jobs with no prediction
+      return false if on_worker.nil? || in_queue.nil?
+
+      in_queue + on_worker <= LOW_WORKLOAD_LIMIT_SECONDS
+    end
+
+    # Returns the sum of the cost predictions for the jobs in the queue
+    # Returns nil if there is a job with no prediction in queue
+    def workload_in_queue
+      cost_predictions = redis.lrange(Testributor::REDIS_JOBS_LIST, 0, -1).
+        map{|j| JSON.parse(j)["cost_prediction"].to_f}
+
+      return nil if cost_predictions.index(:nil?) && cost_predictions.any?
+
+      cost_predictions.inject(0, :+)
     end
 
     # Use different redis connection for each thread

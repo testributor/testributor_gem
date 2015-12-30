@@ -14,33 +14,49 @@ module Testributor
 
     def run
       log "Entering Worker loop"
-      loop do
-        job = redis.rpop(Testributor::REDIS_JOBS_LIST)
-
-        if job
-          result = nil
-          job = JSON.parse(job)
-          # Skip blacklisted test runs
-          test_run_id = job["test_run"]["id"]
-          if redis.get(Testributor.redis_blacklisted_test_run_key(test_run_id))
-            log "Skipping job #{job["id"]} for blacklisted test run #{test_run_id}"
-            next
-          end
-
-          Dir.chdir(Project::DIRECTORY) do
-            result = TestJob.new(
-              job.merge!('started_at_seconds_since_epoch' => Time.now.utc.to_i)
-            ).run
-          end
-          result.merge!("test_run_id" => job["test_run"]["id"])
-          redis.hset(Testributor::REDIS_REPORTS_HASH, job["id"], result.to_json)
-        else
-          sleep NO_JOBS_IN_QUEUE_TIMEOUT_SECONDS
-        end
-      end
+      loop { handle_next_job }
     end
 
     private
+
+    # We wrap the loop's code in a separate method to make testing easier
+    def handle_next_job
+      job = redis.rpop(Testributor::REDIS_JOBS_LIST)
+
+      if job
+        result = nil
+        job = JSON.parse(job)
+        # Skip blacklisted test runs
+        test_run_id = job["test_run"]["id"]
+        if redis.get(Testributor.redis_blacklisted_test_run_key(test_run_id))
+          log "Skipping job #{job["id"]} for blacklisted test run #{test_run_id}"
+          return
+        end
+
+        set_current_job(job)
+        Dir.chdir(Project::DIRECTORY) do
+          result = TestJob.new(
+            job.merge!('started_at_seconds_since_epoch' => Time.now.utc.to_i)
+          ).run
+        end
+        result.merge!("test_run_id" => job["test_run"]["id"])
+        redis.hset(Testributor::REDIS_REPORTS_HASH, job["id"], result.to_json)
+      else
+        set_current_job(nil)
+        sleep NO_JOBS_IN_QUEUE_TIMEOUT_SECONDS
+      end
+    end
+
+    # Sets the current job cost prediction details using the Testributor methods
+    def set_current_job(job)
+      if job.nil?
+        Testributor.worker_current_job_started_at = nil
+        Testributor.worker_current_job_cost_prediction = nil
+      else
+        Testributor.worker_current_job_started_at = Time.now
+        Testributor.worker_current_job_cost_prediction = job["cost_prediction"].to_f
+      end
+    end
 
     # Use different redis connection for each thread
     def redis

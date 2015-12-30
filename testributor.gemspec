@@ -17,5 +17,5 @@ Gem::Specification.new do |s|
   s.executables      << 'testributor'
 
   %w(oauth2 rugged minitest redis).each { |gem|  s.add_runtime_dependency gem  }
-  %w(pry pry-nav minitest-stub_any_instance).each { |gem| s.add_development_dependency gem }
+  %w(pry pry-nav minitest-stub_any_instance timecop minitest-stub-const).each { |gem| s.add_development_dependency gem }
 end
