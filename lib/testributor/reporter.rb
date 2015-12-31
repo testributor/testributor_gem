@@ -8,7 +8,7 @@ module Testributor
   # TODO: When reporting to katana there is a possibility that the jobs
   # refer to a now cancelled (or destoyed) test run. In this case katana
   # should respond with a list of cancelled/destroyed runs. This class should
-  # then remove the jobs from the REDIS_JOBS_LIST to prevent the worker from 
+  # then remove the jobs from the REDIS_JOBS_LIST to prevent the worker from
   # running those.
   class Reporter
     # If Worker pushes completed jobs a lot faster than this interval,
@@ -31,11 +31,12 @@ module Testributor
           if !(response = report(reports))
             log "Sleeping due to errors"
             sleep REPORT_ERROR_TIMEOUT_SECONDS
-            next
           else
             blacklist_test_runs(response['delete_test_runs'])
           end
         else
+          # Send a beacon to server to notify him that worker is alive
+          client.beacon
           sleep REPORTING_FREQUENCY_SECONDS
         end
       end

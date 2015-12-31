@@ -69,6 +69,10 @@ module Testributor
       request(:patch, "test_jobs/batch_update", body: { jobs: params }).parsed
     end
 
+    def beacon
+      request(:post, "projects/beacon")
+    end
+
     private
 
     def self.log(message)
