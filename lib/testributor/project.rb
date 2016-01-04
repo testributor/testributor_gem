@@ -1,4 +1,7 @@
 module Testributor
+  BENCHMARK_SETUP_SECONDS = 3
+  BENCHMARK_FETCH_PROJECT_SECONDS = 5
+
   # This class wraps the current project response. It is responsible for
   # the git repository setup.
   class Project
@@ -27,8 +30,9 @@ module Testributor
     # Perfoms any actions needed to prepare the projects directory for a
     # job on a the specified commit
     def prepare_for_commit(commit_sha)
-      fetch_project_repo if !repo.exists?(commit_sha)
+      return if ENV["BENCHMARK_MODE"]
 
+      fetch_project_repo if !repo.exists?(commit_sha)
       current_commit = current_commit_sha
       if current_commit[0..5] != commit_sha[0..5] # commit changed
         log "Current commit ##{current_commit[0..5]} does not match ##{commit_sha[0..5]}"
@@ -67,6 +71,8 @@ module Testributor
 
     def fetch_project_repo
       log "Fetching repo"
+      return sleep BENCHMARK_FETCH_PROJECT_SECONDS if ENV["BENCHMARK_MODE"]
+
       Dir.chdir(DIRECTORY) do
         Testributor.command("git init")
         Testributor.command("git remote add origin https://#{github_access_token}@github.com/#{repo_owner}/#{repo_name}")
@@ -90,6 +96,9 @@ module Testributor
     # katana can notify the users).
     def setup_test_environment(commit_sha=nil)
       log "Setting up environment"
+
+      return sleep BENCHMARK_SETUP_SECONDS if ENV["BENCHMARK_MODE"]
+
       Dir.chdir(DIRECTORY) do
         # reset hard to the specified commit (or simply HEAD if no commit is
         # specified) and drop any changes.

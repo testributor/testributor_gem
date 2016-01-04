@@ -1,4 +1,7 @@
 module Testributor
+
+  BENCHMARK_COMMAND_RANGE_SECONDS = 2..60
+
   # Use the SSL certificate provided by heroku for now
   API_URL = ENV["API_URL"] || "https://testributor.herokuapp.com/api/v1/"
 
@@ -152,6 +155,11 @@ module Testributor
     result_type = nil
     thread_name = Thread.current["name"]
     threads = []
+
+    if ENV["BENCHMARK_MODE"]
+      final_command_str = "sleep #{rand(BENCHMARK_COMMAND_RANGE_SECONDS)}"
+    end
+
     Open3.popen3(final_command_str) do |stdin, stdout, stderr, thread|
       # read each stream from a new thread
       { :out => stdout, :err => stderr }.each do |key, stream|
