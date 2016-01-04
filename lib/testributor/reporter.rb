@@ -33,6 +33,7 @@ module Testributor
             sleep REPORT_ERROR_TIMEOUT_SECONDS
           else
             blacklist_test_runs(response['delete_test_runs'])
+            sleep REPORTING_FREQUENCY_SECONDS
           end
         else
           # Send a beacon to server to notify him that worker is alive
