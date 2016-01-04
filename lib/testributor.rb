@@ -1,3 +1,4 @@
+require 'securerandom'
 module Testributor
 
   BENCHMARK_COMMAND_RANGE_SECONDS = 2..60
@@ -11,7 +12,8 @@ module Testributor
   # selected in technologies).
   REDIS_HOST = ENV['TESTRIBUTOR_REDIS_URL'] || '127.0.0.1'
   REDIS_PORT = ENV['TESTRIBUTOR_REDIS_PORT'] || '6380'
-  REDIS_DB = ENV['TESTRIBUTOR_REDIS_DB'] || 'testributor'
+  REDIS_DB = ENV['TESTRIBUTOR_REDIS_DB'] ||
+    ('testributor' << (ENV["BENCHMARK_MODE"] ? SecureRandom.hex(5) : ''))
 
   REDIS_JOBS_LIST = 'jobs'
   REDIS_REPORTS_HASH = 'reports'
