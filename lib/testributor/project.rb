@@ -24,7 +24,7 @@ module Testributor
       # Setup the environment because TestJob#run will not setup the
       # project if the commit is the current commit.
       setup_test_environment
-      @repo = Rugged::Repository.new(DIRECTORY)
+      @repo = Rugged::Repository.new(DIRECTORY) unless ENV["BENCHMARK_MODE"]
     end
 
     # Perfoms any actions needed to prepare the projects directory for a
