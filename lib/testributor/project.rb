@@ -1,6 +1,7 @@
 module Testributor
   BENCHMARK_SETUP_SECONDS = 3
   BENCHMARK_FETCH_PROJECT_SECONDS = 5
+  TESTRIBUTOR_FUNCTIONS_PATH = 'testributor_functions.sh'
 
   # This class wraps the current project response. It is responsible for
   # the git repository setup.
@@ -100,14 +101,20 @@ module Testributor
       return sleep BENCHMARK_SETUP_SECONDS if ENV["BENCHMARK_MODE"]
 
       Dir.chdir(DIRECTORY) do
+        # This stores environment variables we expose in build commands script
+        build_commands_variables = {}
+
         # reset hard to the specified commit (or simply HEAD if no commit is
         # specified) and drop any changes.
         # TODO: remove old project if any
         if commit_sha.nil?
           log "Resetting to default branch"
           Testributor.command("git reset --hard")
+          build_commands_variables["WORKER_INITIALIZING"] = true
         else
           log "Checking out commit #{commit_sha}"
+          build_commands_variables["PREVIOUS_COMMIT_HASH"] = current_commit_sha[0..5]
+          build_commands_variables["CURRENT_COMMIT_HASH"] = commit_sha[0..5]
           Testributor.command("git reset --hard #{commit_sha}")
         end
         Testributor.command("git clean -df")
@@ -121,13 +128,26 @@ module Testributor
           File.write(file["path"], file["contents"])
         end
 
-        # TODO: Store the result of this command and put is in the reporter's
+        # TODO: Store the result of this command and put it in the reporter's
         # list to be sent.
-        log "Running build commands:"
+        log "Running build commands with available variables: #{build_commands_variables}"
         if File.exists?(BUILD_COMMANDS_PATH)
           log File.read(BUILD_COMMANDS_PATH)
-          Testributor.command("/bin/bash #{BUILD_COMMANDS_PATH}")
+          prepare_bash_functions_and_variables(build_commands_variables)
+          command = "cat #{TESTRIBUTOR_FUNCTIONS_PATH} #{BUILD_COMMANDS_PATH} | /bin/bash"
+
+          Testributor.command(command)
         end
+      end
+    end
+
+    def prepare_bash_functions_and_variables(build_commands_variables={})
+      variables =
+        build_commands_variables.map{ |name, value| "#{name}=#{value}\n" }.join
+
+      Dir.chdir(DIRECTORY) do
+        File.write(TESTRIBUTOR_FUNCTIONS_PATH,
+          "#{variables}" << Testributor::BASH_FUNCTIONS)
       end
     end
 

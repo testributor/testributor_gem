@@ -197,6 +197,7 @@ end
 
 Testributor.allow_retries_on_failure = true
 
+require 'testributor/constants'
 require 'testributor/manager'
 require 'testributor/reporter'
 require 'testributor/worker'
