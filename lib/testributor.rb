@@ -104,6 +104,11 @@ module Testributor
     @redis = Redis.new(:host => REDIS_HOST, :port => REDIS_PORT, :db => REDIS_DB)
     @uuid = SecureRandom.uuid
 
+    # Clear any relics. Stopped workers should start fresh to avoid sending
+    # irrelevant statistics about queue times etc. Katana reassigns jobs when
+    # workers die so it should be no problem.
+    @redis.flushdb
+
     @current_project = Project.new(client.get_current_project)
 
     log "Starting Worker thread"
