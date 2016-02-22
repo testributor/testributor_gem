@@ -1,7 +1,7 @@
 module Testributor
   BENCHMARK_SETUP_SECONDS = 3
   BENCHMARK_FETCH_PROJECT_SECONDS = 5
-  TESTRIBUTOR_FUNCTIONS_PATH = 'testributor_functions.sh'
+  TESTRIBUTOR_FUNCTIONS_COMBINED_BUILD_COMMANDS_PATH = 'testributor_functions.sh'
 
   # This class wraps the current project response. It is responsible for
   # the git repository setup.
@@ -132,11 +132,10 @@ module Testributor
         # list to be sent.
         log "Running build commands with available variables: #{build_commands_variables}"
         if File.exists?(BUILD_COMMANDS_PATH)
-          log File.read(BUILD_COMMANDS_PATH)
           prepare_bash_functions_and_variables(build_commands_variables)
-          command = "cat #{TESTRIBUTOR_FUNCTIONS_PATH} #{BUILD_COMMANDS_PATH} | /bin/bash"
 
-          Testributor.command(command)
+          Testributor.command(
+            "/bin/bash #{TESTRIBUTOR_FUNCTIONS_COMBINED_BUILD_COMMANDS_PATH}")
         end
       end
     end
@@ -145,9 +144,18 @@ module Testributor
       variables =
         build_commands_variables.map{ |name, value| "#{name}=#{value}\n" }.join
 
+      build_commands =
+        if File.exists?(BUILD_COMMANDS_PATH) 
+          commands = File.read(BUILD_COMMANDS_PATH)
+          log commands
+          commands
+        else
+          ''
+        end
+
       Dir.chdir(DIRECTORY) do
-        File.write(TESTRIBUTOR_FUNCTIONS_PATH,
-          "#{variables}" << Testributor::BASH_FUNCTIONS)
+        File.write(TESTRIBUTOR_FUNCTIONS_COMBINED_BUILD_COMMANDS_PATH,
+          "#{variables}" << Testributor::BASH_FUNCTIONS << "\n" << build_commands)
       end
     end
 

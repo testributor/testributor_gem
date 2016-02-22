@@ -152,7 +152,11 @@ module Testributor
   # block.
   def self.command(command_str, options={})
     options = {log_output: true, return_duration: false}.merge(options)
-    final_command_str = force_ruby_version ? "rvm #{force_ruby_version} do #{command_str}"  : command_str
+    final_command_str = if force_ruby_version
+                          "rvm #{force_ruby_version} do #{command_str}"
+                        else
+                          command_str
+                        end
     start_time_at = Time.now
 
     # https://nickcharlton.net/posts/ruby-subprocesses-with-stdout-stderr-streams.html
