@@ -41,6 +41,10 @@ module Testributor
     @uuid = uuid
   end
 
+  def self.short_uuid
+    @short_uuid
+  end
+
   def self.worker_current_job_started_at=(time)
     @worker_current_job_started_at = time
   end
@@ -103,6 +107,7 @@ module Testributor
     @client = Client.new(ENV["APP_ID"], ENV["APP_SECRET"])
     @redis = Redis.new(:host => REDIS_HOST, :port => REDIS_PORT, :db => REDIS_DB)
     @uuid = SecureRandom.uuid
+    @short_uuid = @uuid.split("-").first
 
     # Clear any relics. Stopped workers should start fresh to avoid sending
     # irrelevant statistics about queue times etc. Katana reassigns jobs when
@@ -138,7 +143,7 @@ module Testributor
   # For now, it's just "puts".
   def self.log(message)
     now = Time.now.utc.strftime "%H:%M:%S UTC"
-    puts "[#{now}][#{Thread.current[:name]}]".ljust(25) << message
+    puts "[#{now}][#{short_uuid}][#{Thread.current[:name]}]".ljust(25) << message
     STDOUT.flush # Always flush the output to show the messages immediatelly
   end
 
