@@ -55,7 +55,7 @@ module Testributor
       # We want to make sure we use the 30 seconds timeout of heroku.
       client = OAuth2::Client.new(app_id, app_secret,
         site: Testributor::API_URL,
-        connection_opts: { request: { timeout: 60, open_timeout: 60 } } )
+        connection_opts: { request: { timeout: 1000, open_timeout: 1000 } } )
 
       Testributor::Client.ensure_run do
         @token = client.client_credentials.get_token
