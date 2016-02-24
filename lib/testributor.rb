@@ -143,7 +143,7 @@ module Testributor
   # For now, it's just "puts".
   def self.log(message)
     now = Time.now.utc.strftime "%H:%M:%S UTC"
-    puts "[#{now}][#{short_uuid}][#{Thread.current[:name]}]".ljust(25) << message
+    puts "[#{now}][#{short_uuid}][#{Thread.current[:name]}] ".ljust(25) << message
     STDOUT.flush # Always flush the output to show the messages immediatelly
   end
 
