@@ -7,7 +7,7 @@ class ClientTest < MiniTest::Test
     end
 
     it "logs exceptions in exception in CONNECTION_ERRORS" do
-      Testributor::Client.expects(:log).once
+      Testributor::Client.expects(:log).twice
       Testributor::Client.ensure_run do
         raise Faraday::ConnectionFailed, "connection failed"
       end
@@ -24,7 +24,7 @@ class ClientTest < MiniTest::Test
     end
 
     it "logs exception if OAuth2::Error and e.code.nil?" do
-      Testributor::Client.expects(:log).once
+      Testributor::Client.expects(:log).twice
       Testributor::Client.ensure_run do
         raise OAuth2::Error, OpenStruct.new
       end

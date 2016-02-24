@@ -15,6 +15,7 @@ module Testributor
     # communication.
     def self.ensure_run
       begin
+        start_time = Time.now
         yield
       rescue *CONNECTION_ERRORS => e
         # When OAuth2::Error occurs, e.code values can be one of the following:
@@ -38,6 +39,7 @@ module Testributor
 
         # TODO : Send us a notification
         log "Error occured: #{e.message}\n #{e.inspect}"
+        log "Error occured after #{Time.now - start_time} seconds"
         if Testributor.allow_retries_on_failure
           log "Retrying in #{REQUEST_ERROR_TIMEOUT_SECONDS} seconds"
           sleep(REQUEST_ERROR_TIMEOUT_SECONDS)
@@ -49,7 +51,12 @@ module Testributor
     def initialize(app_id, app_secret)
       Testributor.log "Client is being initialized"
       # Setup connection
-      client = OAuth2::Client.new(app_id, app_secret, site: Testributor::API_URL)
+      # Use a big enough timeout to make sure any default timeouts do not apply.
+      # We want to make sure we use the 30 seconds timeout of heroku.
+      client = OAuth2::Client.new(app_id, app_secret,
+        site: Testributor::API_URL,
+        connection_opts: { request: { timeout: 60, open_timeout: 60 } } )
+
       Testributor::Client.ensure_run do
         @token = client.client_credentials.get_token
       end
