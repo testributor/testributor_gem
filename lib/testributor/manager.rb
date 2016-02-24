@@ -74,7 +74,10 @@ module Testributor
     end
 
     def client
-      Testributor.client
+      # Testributor.client
+      # NOTE: Use a different client per thread to investigate the Faraday timeout
+      # errors
+      @client ||= Client.new(ENV["APP_ID"], ENV["APP_SECRET"])
     end
 
     def log(message)
