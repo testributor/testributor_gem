@@ -51,11 +51,7 @@ module Testributor
     def initialize(app_id, app_secret)
       Testributor.log "Client is being initialized"
       # Setup connection
-      # Use a big enough timeout to make sure any default timeouts do not apply.
-      # We want to make sure we use the 30 seconds timeout of heroku.
-      client = OAuth2::Client.new(app_id, app_secret,
-        site: Testributor::API_URL,
-        connection_opts: { request: { timeout: 1000, open_timeout: 1000 } } )
+      client = OAuth2::Client.new(app_id, app_secret, site: Testributor::API_URL)
 
       Testributor::Client.ensure_run do
         @token = client.client_credentials.get_token
