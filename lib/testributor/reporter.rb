@@ -22,9 +22,11 @@ module Testributor
     # jobs assigned to workers when there is a problem.
     REPORT_ERROR_TIMEOUT_SECONDS = 60
     BLACKLIST_EXPIRATION_SECONDS = 3600
+    BEACON_THRESHOLD_SECONDS = 12
 
     def run
       log "Entering Reporter loop"
+      last_beaconed = nil
       loop do
         reports = redis.hgetall(Testributor::REDIS_REPORTS_HASH)
         if reports.any?
@@ -32,12 +34,15 @@ module Testributor
             log "Sleeping due to errors"
             sleep REPORT_ERROR_TIMEOUT_SECONDS
           else
+            last_beaconed = nil
             blacklist_test_runs(response['delete_test_runs'])
             sleep REPORTING_FREQUENCY_SECONDS
           end
         else
+          last_beaconed ||= Time.now
           # Send a beacon to server to notify him that worker is alive
-          client.beacon
+          client.beacon if (Time.now - last_beaconed) > BEACON_THRESHOLD_SECONDS
+
           sleep REPORTING_FREQUENCY_SECONDS
         end
       end
