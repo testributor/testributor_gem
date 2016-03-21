@@ -83,9 +83,9 @@ module Testributor
 
   # These should much the codes on the testributor side
   RESULT_TYPES = {
-    passed: 2,
-    failed: 3,
-    error: 4
+    passed: 3,
+    failed: 4,
+    error: 5
   }
 
   def self.redis
