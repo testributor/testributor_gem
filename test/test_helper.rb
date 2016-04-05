@@ -19,5 +19,8 @@ class MiniTest::Test
                       port: Testributor::REDIS_PORT,
                       db: Testributor::REDIS_DB)
     redis.flushall
+
+    # Don't print things when running tests
+    Testributor.stubs(:log).returns(true)
   end
 end

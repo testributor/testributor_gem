@@ -19,20 +19,31 @@ module Testributor
     def run
       log "Entering Manager loop"
       loop do
-        if low_workload?
-          if (jobs = client.fetch_jobs).any?
-            log "Fetched #{jobs.count} jobs to run"
-            jobs.each do |job|
-              job.merge!(queued_at_seconds_since_epoch: Time.now.utc.to_i)
-              redis.lpush(Testributor::REDIS_JOBS_LIST, job.to_json)
-            end
-            sleep LIST_CHECK_TIMEOUT_SECONDS
-          else
-            sleep NO_JOBS_ON_TESTRIBUTOR_TIMEOUT_SECONDS
+        loop_iteration
+      end
+    end
+
+    # This method is the only method called inside the loop. It is extracted
+    # to a method to make testing possible, otherwise we would have to somehow
+    # test an infinite loop.
+    def loop_iteration
+      if low_workload?
+        response = client.fetch_jobs
+        if response.is_a?(Hash) && response["test_run"]
+          log "Fetched setup job for Build #{response["test_run"]["id"]}"
+          redis.lpush(Testributor::REDIS_JOBS_LIST, response.to_json)
+        elsif (jobs = client.fetch_jobs).any?
+          log "Fetched #{jobs.count} jobs to run"
+          jobs.each do |job|
+            job.merge!(queued_at_seconds_since_epoch: Time.now.utc.to_i)
+            redis.lpush(Testributor::REDIS_JOBS_LIST, job.to_json)
           end
-        else
           sleep LIST_CHECK_TIMEOUT_SECONDS
+        else
+          sleep NO_JOBS_ON_TESTRIBUTOR_TIMEOUT_SECONDS
         end
+      else
+        sleep LIST_CHECK_TIMEOUT_SECONDS
       end
     end
 

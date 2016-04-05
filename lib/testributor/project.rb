@@ -11,6 +11,13 @@ module Testributor
     BUILD_COMMANDS_PATH = 'testributor_build_commands.sh'
     SSH_DIRECTORY = ENV['HOME'] + '/.ssh'
 
+    TESTRIBUTOR_SSH_PRIVATE_PATH = "#{SSH_DIRECTORY}/testributor_id_rsa"
+    TESTRIBUTOR_SSH_PUBLIC_PATH = "#{SSH_DIRECTORY}/testributor_id_rsa.pub"
+
+    # http://superuser.com/a/912281
+    ENV["GIT_SSH_COMMAND"] = "ssh -i #{TESTRIBUTOR_SSH_PRIVATE_PATH} -F /dev/null"
+
+
     attr_reader :repository_ssh_url, :repo, :overridden_files, :ssh_key_private,
       :ssh_key_public
 
@@ -176,17 +183,17 @@ module Testributor
     def create_ssh_keys
       raise Testributor::InvalidSshKeyError if ssh_key_private.nil?
 
-      log 'Creating `~/.ssh/id_rsa` and `~/.ssh/id_rsa.pub` files'
+      log "Creating #{TESTRIBUTOR_SSH_PRIVATE_PATH} and #{TESTRIBUTOR_SSH_PUBLIC_PATH} files"
       unless File.directory?(SSH_DIRECTORY)
         FileUtils.mkdir_p(SSH_DIRECTORY)
       end
-      File.write("#{SSH_DIRECTORY}/id_rsa", ssh_key_private)
-      File.write("#{SSH_DIRECTORY}/id_rsa.pub", ssh_key_public)
+      File.write(TESTRIBUTOR_SSH_PRIVATE_PATH, ssh_key_private)
+      File.write(TESTRIBUTOR_SSH_PUBLIC_PATH, ssh_key_public)
 
       log 'Set the appropriate permissions'
-      Testributor.command('chmod 700 ~/.ssh')
-      Testributor.command('chmod 600 ~/.ssh/id_rsa')
-      Testributor.command('chmod 644 ~/.ssh/id_rsa.pub')
+      Testributor.command("chmod 700 #{SSH_DIRECTORY}")
+      Testributor.command("chmod 600 #{TESTRIBUTOR_SSH_PRIVATE_PATH}")
+      Testributor.command("chmod 644 #{TESTRIBUTOR_SSH_PUBLIC_PATH}")
 
       # The following 2 lines are not currently required.
       # Uncomment if the SSH Agent is needed.
@@ -195,12 +202,12 @@ module Testributor
 
       # Configure SSH to avoid prompting to add the remote host to the
       # known_hosts file.
-      Testributor.command('printf "Host *\n    StrictHostKeyChecking no\n" > ~/.ssh/config')
+      Testributor.command("printf \"Host *\n    StrictHostKeyChecking no\n\" > #{SSH_DIRECTORY}/config")
     end
 
     def check_ssh_key_validity
       remote_host = repository_ssh_url.split(":").first # e.g. git@github.com
-      result = Testributor.command("ssh -T #{remote_host}")
+      result = Testributor.command("ssh -T #{remote_host} -i #{TESTRIBUTOR_SSH_PRIVATE_PATH}")
 
       # SSH exits with the exit status of the remote command or with 255 if an
       # error occurred.
