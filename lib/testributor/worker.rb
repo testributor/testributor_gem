@@ -26,7 +26,7 @@ module Testributor
       if job
         result = nil
         job = JSON.parse(job)
-        # Skip blacklisted test runs
+        # Skip blacklisted test runs. Setup jobs also have this key.
         test_run_id = job["test_run"]["id"]
         if redis.get(Testributor.redis_blacklisted_test_run_key(test_run_id))
           log "Skipping job #{job["id"]} for blacklisted test run #{test_run_id}"
@@ -34,13 +34,21 @@ module Testributor
         end
 
         set_current_job(job)
-        Dir.chdir(Project::DIRECTORY) do
-          result = TestJob.new(
-            job.merge!('started_at_seconds_since_epoch' => Time.now.utc.to_i)
-          ).run
+        if job["type"] == "setup"
+          Dir.chdir(Project::DIRECTORY) do
+            result = SetupJob.new(job).run
+          end
+          redis.hset(Testributor::REDIS_REPORTS_HASH,
+                     "setup_job_#{job["test_run"]["id"]}", result.to_json)
+        else
+          Dir.chdir(Project::DIRECTORY) do
+            result = TestJob.new(
+              job.merge!('started_at_seconds_since_epoch' => Time.now.utc.to_i)
+            ).run
+          end
+          result.merge!("test_run_id" => job["test_run"]["id"])
+          redis.hset(Testributor::REDIS_REPORTS_HASH, job["id"], result.to_json)
         end
-        result.merge!("test_run_id" => job["test_run"]["id"])
-        redis.hset(Testributor::REDIS_REPORTS_HASH, job["id"], result.to_json)
       else
         set_current_job(nil)
         sleep NO_JOBS_IN_QUEUE_TIMEOUT_SECONDS

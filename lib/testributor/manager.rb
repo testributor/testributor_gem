@@ -29,12 +29,16 @@ module Testributor
     def loop_iteration
       if low_workload?
         response = client.fetch_jobs
+        #  A setup job response looks like this:
+        #  { test_run: { id: '123', commit_sha: '123', testributor_yml: '...' } }
+        #  while a test job response looks like this:
+        #  [{ id: '123', ...}, { id: '321', ...}, ...]
         if response.is_a?(Hash) && response["test_run"]
           log "Fetched setup job for Build #{response["test_run"]["id"]}"
           redis.lpush(Testributor::REDIS_JOBS_LIST, response.to_json)
-        elsif (jobs = client.fetch_jobs).any?
-          log "Fetched #{jobs.count} jobs to run"
-          jobs.each do |job|
+        elsif response.is_a?(Array) && response.any?
+          log "Fetched #{response.count} jobs to run"
+          response.each do |job|
             job.merge!(queued_at_seconds_since_epoch: Time.now.utc.to_i)
             redis.lpush(Testributor::REDIS_JOBS_LIST, job.to_json)
           end

@@ -53,6 +53,23 @@ module Testributor
       end
     end
 
+    def checkout_commit(commit_sha)
+      Dir.chdir(DIRECTORY) do
+        result =
+          if commit_sha.nil?
+            Testributor.command("git reset --hard")
+          else
+            Testributor.command("git reset --hard #{commit_sha} --")
+          end
+
+        if [1, 128].include?(result[:exit_code])
+          { error: result[:output] }
+        else
+          nil
+        end
+      end
+    end
+
     private
 
     # Sets the Testributor.force_ruby_version to the user's ruby when that ruby
@@ -126,14 +143,16 @@ module Testributor
         # TODO remove old project if any
         if commit_sha.nil?
           log "Resetting to default branch"
-          Testributor.command("git reset --hard")
           build_commands_variables["WORKER_INITIALIZING"] = true
         else
           log "Checking out commit #{commit_sha}"
           build_commands_variables["PREVIOUS_COMMIT_HASH"] = current_commit_sha[0..5]
           build_commands_variables["CURRENT_COMMIT_HASH"] = commit_sha[0..5]
-          Testributor.command("git reset --hard #{commit_sha}")
         end
+        result = checkout_commit(commit_sha)
+
+        return result if result.is_a?(Hash) && result[:error]
+
         Testributor.command("git clean -df")
 
         overridden_files.each do |file|
