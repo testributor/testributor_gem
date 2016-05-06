@@ -37,6 +37,10 @@ module Testributor
     @force_ruby_version
   end
 
+  def self.uuid
+    @uuid
+  end
+
   def self.uuid=(uuid)
     @uuid = uuid
   end
@@ -71,10 +75,6 @@ module Testributor
 
     [@worker_current_job_cost_prediction -
       (Time.now - @worker_current_job_started_at), 0].max
-  end
-
-  def self.uuid
-    @uuid
   end
 
   def self.redis_blacklisted_test_run_key(test_run_id)
