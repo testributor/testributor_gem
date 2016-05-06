@@ -45,6 +45,14 @@ module Testributor
     @uuid = uuid
   end
 
+  def self.last_test_run_id
+    @last_test_run_id
+  end
+
+  def self.last_test_run_id=(id)
+    @last_test_run_id = id
+  end
+
   def self.short_uuid
     @short_uuid
   end

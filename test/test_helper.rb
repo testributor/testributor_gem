@@ -20,7 +20,7 @@ class MiniTest::Test
                       db: Testributor::REDIS_DB)
     redis.flushall
 
-    # Don't print things when running tests
-    Testributor.stubs(:log).returns(true)
+    Testributor.stubs(:log).returns(true) # Don't print things when running tests
+    Testributor.last_test_run_id = nil    # Reset to default
   end
 end

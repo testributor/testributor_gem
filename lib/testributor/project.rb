@@ -42,14 +42,15 @@ module Testributor
 
     # Performs any actions needed to prepare the projects directory for a
     # job on a the specified commit
-    def prepare_for_commit(commit_sha)
+    # test_run_data is a Hash like { "commit_sha" => "1234", "id" => "1242" }
+    def prepare_for_test_run(test_run_data)
       return if ENV["BENCHMARK_MODE"]
 
-      fetch_project_repo if !repo.exists?(commit_sha)
-      current_commit = current_commit_sha
-      if current_commit[0..5] != commit_sha[0..5] # commit changed
-        log "Current commit ##{current_commit[0..5]} does not match ##{commit_sha[0..5]}"
-        setup_test_environment(commit_sha)
+      fetch_project_repo if !repo.exists?(test_run_data["commit_sha"])
+
+      # Only run build commands if build has changed
+      if test_run_data["id"].to_i != Testributor.last_test_run_id.to_i
+        setup_test_environment(test_run_data["commit_sha"])
       end
     end
 
