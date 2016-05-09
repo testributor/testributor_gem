@@ -54,6 +54,7 @@ module Testributor
       cost_predictions = redis.lrange(Testributor::REDIS_JOBS_LIST, 0, -1).
         map{|j| JSON.parse(j)["cost_prediction"].to_f}
 
+      # TODO: Fix this, since we call "to_f" above, it can never be nil
       return nil if cost_predictions.index(:nil?) && cost_predictions.any?
 
       cost_predictions.inject(0, :+)
