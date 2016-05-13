@@ -80,6 +80,12 @@ module Testributor
 
       Dir.chdir(DIRECTORY) do
         Testributor.command("git init")
+
+        # Check if origin exists and remove in order to change it if
+        # url changed in testributor project/settings page
+        if Testributor.command("git remote show | grep origin")[:exit_code] == 0
+          Testributor.command("git remote rm origin")
+        end
         Testributor.command("git remote add origin #{repository_ssh_url}")
         Testributor.command("git fetch origin")
         # A "random" commit to checkout. This creates the local HEAD so we can
