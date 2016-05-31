@@ -174,7 +174,8 @@ module Testributor
 
     # https://nickcharlton.net/posts/ruby-subprocesses-with-stdout-stderr-streams.html
     # see: http://stackoverflow.com/a/1162850/83386
-    data = {:out => '', :err => ''}
+    stdout_data = ''
+    stderr_data = ''
     result_type = nil
     exit_code = nil
     thread_name = Thread.current["name"]
@@ -186,29 +187,42 @@ module Testributor
 
     Open3.popen3(final_command_str) do |stdin, stdout, stderr, thread|
       # read each stream from a new thread
-      { :out => stdout, :err => stderr }.each do |key, stream|
+      [[stdout_data, stdout], [stderr_data, stderr]].each do |store_var, stream|
         threads << Thread.new do
           # give the same name as the caller thread to show in output
           # This threads are just helpers to read both streams at the same time
           # so the don't need a name on their own.
           Thread.current[:name] = thread_name
           until (line = stream.gets).nil? do
-            data[key] << line # append new lines
-            options[:log_output] && log(line) # append new lines
+            store_var << line # append new lines
+            options[:log_output] && log(line)
           end
         end
       end
 
-      threads.each(&:join)
-
       result_type =
         if thread.value.success?
           RESULT_TYPES[:passed]
-        elsif data[:err].strip == ''
+        elsif stderr_data.strip == ''
           RESULT_TYPES[:failed]
         else
           RESULT_TYPES[:error]
         end
+
+      # Wait 1 second for stream threads to be "joined".
+      # The main thread (the command) is done so any commands binding the stdout
+      # or stderr like E.g.
+      #  Xvfb :1 -screen 0 1024x768x24 &
+      # should not prevent this method from returning.
+      # Give a fair timeout in case there is some last data on a stream which
+      # the thread did not have the time to read.
+      begin
+        Timeout::timeout(1) {
+          threads.map(&:join)
+        }
+      rescue Timeout::Error
+        threads.each(&:exit)
+      end
 
       # Keep the system exit code too. Useful for general purpose commands.
       exit_code = thread.value.exitstatus
@@ -216,7 +230,9 @@ module Testributor
     duration = Time.now - start_time_at
 
     h = {
-      output: (data[:out] + data[:err]).strip,
+      # TODO: The output should be in the same order it was logged. Now the
+      # error is always last.
+      output: (stdout_data + stderr_data).strip,
       result_type: result_type,
       exit_code: exit_code
     }
