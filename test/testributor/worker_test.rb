@@ -37,6 +37,36 @@ class WorkerTest < MiniTest::Test
           end
         end
       end
+
+      describe "and the job is a setup job" do
+        before do
+          subject.send(:redis).lpush(
+            Testributor::REDIS_JOBS_LIST,
+            { cost_prediction: 20,
+              type: "setup",
+              test_run: { id: "123", commit_sha: "1234" },
+              testributor_yml: "a: 1"
+            }.to_json)
+        end
+
+        it "creates a SetupJob and runs it" do
+          Testributor::Worker.stub_const(:NO_JOBS_IN_QUEUE_TIMEOUT_SECONDS, 0) do
+            Testributor::SetupJob.any_instance.expects(:run).once
+            Testributor::TestJob.any_instance.expects(:run).times(0)
+            subject.send(:handle_next_job)
+          end
+        end
+
+        it "pushes the result to the reports queue" do
+          Testributor::Worker.stub_const(:NO_JOBS_IN_QUEUE_TIMEOUT_SECONDS, 0) do
+            Testributor::SetupJob.any_instance.expects(:run).once.
+              returns({ some_key: :some_value })
+            subject.send(:handle_next_job)
+            subject.send(:redis).hgetall(Testributor::REDIS_REPORTS_HASH).
+              must_equal({"setup_job_123"=>"{\"some_key\":\"some_value\"}"})
+          end
+        end
+      end
     end
   end
 end

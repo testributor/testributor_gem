@@ -37,8 +37,20 @@ module Testributor
     @force_ruby_version
   end
 
+  def self.uuid
+    @uuid
+  end
+
   def self.uuid=(uuid)
     @uuid = uuid
+  end
+
+  def self.last_test_run_id
+    @last_test_run_id
+  end
+
+  def self.last_test_run_id=(id)
+    @last_test_run_id = id
   end
 
   def self.short_uuid
@@ -71,10 +83,6 @@ module Testributor
 
     [@worker_current_job_cost_prediction -
       (Time.now - @worker_current_job_started_at), 0].max
-  end
-
-  def self.uuid
-    @uuid
   end
 
   def self.redis_blacklisted_test_run_key(test_run_id)
@@ -231,6 +239,7 @@ require 'testributor/reporter'
 require 'testributor/worker'
 require 'testributor/client'
 require 'testributor/test_job'
+require 'testributor/setup_job'
 require 'testributor/project'
 require 'rugged'
 require 'open3'

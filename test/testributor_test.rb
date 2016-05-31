@@ -9,7 +9,7 @@ class TestributorTest < MiniTest::Test
           %q{/bin/bash -c "ruby -e 'raise'; ruby -e 'puts \"stdout_here\"'"}
         Testributor.command(command)
       end
-      log.must_match /.*exception.*stdout_here.*/m
+      log.must_match(/.*exception.*stdout_here.*/m)
     end
   end
 end

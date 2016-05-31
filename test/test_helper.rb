@@ -1,7 +1,7 @@
 # Use different redis settings for tests
 ENV['TESTRIBUTOR_REDIS_URL'] = ENV['TESTRIBUTOR_REDIS_TEST_URL'] || '127.0.0.1'
 ENV['TESTRIBUTOR_REDIS_PORT'] = ENV['TESTRIBUTOR_REDIS_TEST_PORT'] || '6379'
-ENV['TESTRIBUTOR_REDIS_DB'] = ENV['TESTRIBUTOR_REDIS_TEST_DB'] || 'testributor_test'
+ENV['TESTRIBUTOR_REDIS_DB'] = ENV['TESTRIBUTOR_REDIS_TEST_DB'] || '2'
 
 require 'testributor'
 require 'minitest/autorun'
@@ -19,5 +19,8 @@ class MiniTest::Test
                       port: Testributor::REDIS_PORT,
                       db: Testributor::REDIS_DB)
     redis.flushall
+
+    Testributor.stubs(:log).returns(true) # Don't print things when running tests
+    Testributor.last_test_run_id = nil    # Reset to default
   end
 end

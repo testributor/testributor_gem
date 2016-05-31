@@ -1,12 +1,12 @@
 # This is a wrapper class around the test_job response from testributor
 module Testributor
   class TestJob
-    attr_reader :id, :commit_sha, :command, :sent_at_seconds_since_epoch,
+    attr_reader :id, :test_run_data, :command, :sent_at_seconds_since_epoch,
       :queued_at_seconds_since_epoch, :started_at_seconds_since_epoch
 
     def initialize(job_response)
       @id = job_response["id"]
-      @commit_sha = job_response["test_run"]["commit_sha"]
+      @test_run_data = job_response["test_run"]
       @command = job_response["command"]
       @sent_at_seconds_since_epoch = job_response["sent_at_seconds_since_epoch"]
       @queued_at_seconds_since_epoch = job_response["queued_at_seconds_since_epoch"]
@@ -14,7 +14,8 @@ module Testributor
     end
 
     def run
-      Testributor.current_project.prepare_for_commit(commit_sha)
+      Testributor.current_project.prepare_for_test_run(test_run_data)
+      Testributor.last_test_run_id = test_run_data["id"].to_i
 
       Testributor.log "Running #{command}"
       result = Testributor.command(command, return_duration: true)

@@ -6,3 +6,4 @@ Gemfile.lock
 *.gem
 /.idea
 .DS_Store
+docker-compose.yml

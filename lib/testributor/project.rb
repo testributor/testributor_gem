@@ -11,6 +11,13 @@ module Testributor
     BUILD_COMMANDS_PATH = 'testributor_build_commands.sh'
     SSH_DIRECTORY = ENV['HOME'] + '/.ssh'
 
+    TESTRIBUTOR_SSH_PRIVATE_PATH = "#{SSH_DIRECTORY}/testributor_id_rsa"
+    TESTRIBUTOR_SSH_PUBLIC_PATH = "#{SSH_DIRECTORY}/testributor_id_rsa.pub"
+
+    # http://superuser.com/a/912281
+    ENV["GIT_SSH_COMMAND"] = "ssh -i #{TESTRIBUTOR_SSH_PRIVATE_PATH} -F /dev/null"
+
+
     attr_reader :repository_ssh_url, :repo, :overridden_files, :ssh_key_private,
       :ssh_key_public
 
@@ -35,14 +42,32 @@ module Testributor
 
     # Performs any actions needed to prepare the projects directory for a
     # job on a the specified commit
-    def prepare_for_commit(commit_sha)
+    # test_run_data is a Hash like { "commit_sha" => "1234", "id" => "1242" }
+    def prepare_for_test_run(test_run_data)
       return if ENV["BENCHMARK_MODE"]
 
-      fetch_project_repo if !repo.exists?(commit_sha)
-      current_commit = current_commit_sha
-      if current_commit[0..5] != commit_sha[0..5] # commit changed
-        log "Current commit ##{current_commit[0..5]} does not match ##{commit_sha[0..5]}"
-        setup_test_environment(commit_sha)
+      fetch_project_repo if !repo.exists?(test_run_data["commit_sha"])
+
+      # Only run build commands if build has changed
+      if test_run_data["id"].to_i != Testributor.last_test_run_id.to_i
+        setup_test_environment(test_run_data["commit_sha"])
+      end
+    end
+
+    def checkout_commit(commit_sha)
+      Dir.chdir(DIRECTORY) do
+        result =
+          if commit_sha.nil?
+            Testributor.command("git reset --hard")
+          else
+            Testributor.command("git reset --hard #{commit_sha} --")
+          end
+
+        if [1, 128].include?(result[:exit_code])
+          { error: result[:output] }
+        else
+          nil
+        end
       end
     end
 
@@ -119,14 +144,16 @@ module Testributor
         # TODO remove old project if any
         if commit_sha.nil?
           log "Resetting to default branch"
-          Testributor.command("git reset --hard")
           build_commands_variables["WORKER_INITIALIZING"] = true
         else
           log "Checking out commit #{commit_sha}"
           build_commands_variables["PREVIOUS_COMMIT_HASH"] = current_commit_sha[0..5]
           build_commands_variables["CURRENT_COMMIT_HASH"] = commit_sha[0..5]
-          Testributor.command("git reset --hard #{commit_sha}")
         end
+        result = checkout_commit(commit_sha)
+
+        return result if result.is_a?(Hash) && result[:error]
+
         Testributor.command("git clean -df")
 
         overridden_files.each do |file|
@@ -176,17 +203,17 @@ module Testributor
     def create_ssh_keys
       raise Testributor::InvalidSshKeyError if ssh_key_private.nil?
 
-      log 'Creating `~/.ssh/id_rsa` and `~/.ssh/id_rsa.pub` files'
+      log "Creating #{TESTRIBUTOR_SSH_PRIVATE_PATH} and #{TESTRIBUTOR_SSH_PUBLIC_PATH} files"
       unless File.directory?(SSH_DIRECTORY)
         FileUtils.mkdir_p(SSH_DIRECTORY)
       end
-      File.write("#{SSH_DIRECTORY}/id_rsa", ssh_key_private)
-      File.write("#{SSH_DIRECTORY}/id_rsa.pub", ssh_key_public)
+      File.write(TESTRIBUTOR_SSH_PRIVATE_PATH, ssh_key_private)
+      File.write(TESTRIBUTOR_SSH_PUBLIC_PATH, ssh_key_public)
 
       log 'Set the appropriate permissions'
-      Testributor.command('chmod 700 ~/.ssh')
-      Testributor.command('chmod 600 ~/.ssh/id_rsa')
-      Testributor.command('chmod 644 ~/.ssh/id_rsa.pub')
+      Testributor.command("chmod 700 #{SSH_DIRECTORY}")
+      Testributor.command("chmod 600 #{TESTRIBUTOR_SSH_PRIVATE_PATH}")
+      Testributor.command("chmod 644 #{TESTRIBUTOR_SSH_PUBLIC_PATH}")
 
       # The following 2 lines are not currently required.
       # Uncomment if the SSH Agent is needed.
@@ -195,12 +222,12 @@ module Testributor
 
       # Configure SSH to avoid prompting to add the remote host to the
       # known_hosts file.
-      Testributor.command('printf "Host *\n    StrictHostKeyChecking no\n" > ~/.ssh/config')
+      Testributor.command("printf \"Host *\n    StrictHostKeyChecking no\n\" > #{SSH_DIRECTORY}/config")
     end
 
     def check_ssh_key_validity
       remote_host = repository_ssh_url.split(":").first # e.g. git@github.com
-      result = Testributor.command("ssh -T #{remote_host}")
+      result = Testributor.command("ssh -T #{remote_host} -i #{TESTRIBUTOR_SSH_PRIVATE_PATH}")
 
       # SSH exits with the exit status of the remote command or with 255 if an
       # error occurred.
