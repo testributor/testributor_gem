@@ -6,7 +6,7 @@ module Testributor
   # This class wraps the current project response. It is responsible for
   # the git repository setup.
   class Project
-    DIRECTORY = ENV["HOME"] + '/.testributor'
+    DIRECTORY = ENV["TESTRIBUTOR_PROJECT_DIRECTORY"] || (ENV["HOME"] + '/.testributor')
     # Should match the one on testributor project files
     BUILD_COMMANDS_PATH = 'testributor_build_commands.sh'
     SSH_DIRECTORY = ENV['HOME'] + '/.ssh'
