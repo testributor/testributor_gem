@@ -1,8 +1,12 @@
-require 'yaml'
+require 'safe_yaml'
 
 # This is a wrapper class around the test_job response from testributor
 module Testributor
   class SetupJob
+
+    # https://github.com/dtao/safe_yaml#configuration
+    SafeYAML::OPTIONS[:default_mode] = :safe
+
     TESTRIBUTOR_YML_PATH = "testributor.yml"
     SHA_HISTORY_LIMIT = 30
     # The user might accidentally set the pattern to a very "loose" regex.
@@ -134,7 +138,7 @@ module Testributor
 
     def testributor_yml_parsed_or_error
       begin
-        { parsed: YAML.load(testributor_yml) }
+        { parsed: YAML.load(testributor_yml, safe: true) }
       rescue Psych::SyntaxError => e
         { error: e.message }
       end
