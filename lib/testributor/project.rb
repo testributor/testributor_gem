@@ -113,12 +113,20 @@ module Testributor
         end
         Testributor.command("git remote add origin #{repository_ssh_url}")
         Testributor.command("git fetch origin")
-        # A "random" commit to checkout. This creates the local HEAD so we can
+        # An "initial" commit to checkout. This creates the local HEAD so we can
         # hard reset to something in setup_test_environment.
-        # TODO: Add a "default_branch" setting on katana and use that here
-        ref_to_checkout = Testributor.command(
-          "git ls-remote --heads -q | tail -n 1 | awk '{print $1}'",
-          log_output: false)[:output]
+        #
+        # branches variable is in format: [["ref", "name"], ...]
+        branches = Testributor.command(
+          "git ls-remote --heads -q", log_output: false)[:output].
+          split("\n").map(&:split)
+
+        # Try to find "master" branch but fallback to a random commit if none
+        # is found.
+        ref_to_checkout =
+          (branches.detect{ |ref, name| name.match(/refs\/heads\/master$/) } ||
+           branches.last)[0]
+
         Testributor.command("git reset --hard #{ref_to_checkout}")
       end
     end
