@@ -8,11 +8,11 @@ Gem::Specification.new do |s|
   s.date             = '2015-09-24'
   s.summary          = 'testributor'
   s.description      = 'Worker gem for testributor.com'
-  s.authors          = ["Dimitris Karakasilis"]
-  s.email            = ["dk@testributor.com"]
+  s.authors          = ["Dimitris Karakasilis", "Ilias Spyropoulos", "Spyros Brilis", "Pavlos Kallis"]
+  s.email            = ["dimitris@testributor.com", "ilias@testributor.com", "spyros@testributor.com", "pavlos@testributor.com"]
   s.files            = Dir.glob("{bin,lib}/**/*")
   s.homepage         = 'http://rubygems.org/gems/testributor'
-  s.license          = 'all rights reserved' # TODO
+  s.license          = 'MIT'
   s.require_path     = 'lib'
   s.executables      << 'testributor'
 
