@@ -1,3 +1,5 @@
+require 'fileutils'
+
 module Testributor
   BENCHMARK_SETUP_SECONDS = 3
   BENCHMARK_FETCH_PROJECT_SECONDS = 5
@@ -95,7 +97,7 @@ module Testributor
     def create_project_directory
       unless File.exists?(DIRECTORY)
         log "Creating directory #{DIRECTORY}"
-        Dir.mkdir(DIRECTORY)
+        FileUtils.mkdir_p(DIRECTORY)
       end
     end
 
